@@ -1,3 +1,15 @@
+# [2.8.0](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.7.4...v2.8.0) (2026-07-24)
+
+
+### Bug Fixes
+
+* **agent:** intercept window close event to gracefully shutdown local daemon ([b4555ef](https://github.com/Jhomel-Dev/Minecraft-server/commit/b4555ef1bdfe732ee866dcf32f01260e8641d6f5))
+
+
+### Features
+
+* **web:** improve offline agent ux in server cards and fix translation keys ([e262908](https://github.com/Jhomel-Dev/Minecraft-server/commit/e262908b89bd074e75ba5a25a2365d8c27dd9b52))
+
 ## [2.7.4](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.7.3...v2.7.4) (2026-07-23)
 
 
