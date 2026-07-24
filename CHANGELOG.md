@@ -1,3 +1,60 @@
+## [2.7.4](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.7.3...v2.7.4) (2026-07-23)
+
+
+### Bug Fixes
+
+* **api,agent-gui:** allow dynamic vercel cors and ensure tauri closes cleanly on shutdown ([e3c1b42](https://github.com/Jhomel-Dev/Minecraft-server/commit/e3c1b424ad6c4686ed7a22ccef3bb9c751ba4d5d))
+
+## [2.7.3](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.7.2...v2.7.3) (2026-07-23)
+
+
+### Bug Fixes
+
+* **core:** sync agent socket disconnection state and patch legacy vbs encoding ([f2253ba](https://github.com/Jhomel-Dev/Minecraft-server/commit/f2253ba29b6cce3649f68d788f7c2d8f55f16072))
+* corregir salto de linea en className ([e0376bf](https://github.com/Jhomel-Dev/Minecraft-server/commit/e0376bf01734782427a1b43ff46638e78d9c9fd9))
+
+## [2.7.2](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.7.1...v2.7.2) (2026-07-22)
+
+
+### Bug Fixes
+
+* **ci:** trigger agent build on semantic-release completion and dynamically fetch tag ([dc4790b](https://github.com/Jhomel-Dev/Minecraft-server/commit/dc4790b905e8d74d96bd0a8606d19a8ea50111d7))
+
+## [2.7.1](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.7.0...v2.7.1) (2026-07-22)
+
+
+### Bug Fixes
+
+* **web:** update hardcoded release fallback links to point to latest ([5ca8a80](https://github.com/Jhomel-Dev/Minecraft-server/commit/5ca8a809eaa17ca17eb3f4e597cfa47b0214ef6f))
+
+# [2.7.0](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.6.0...v2.7.0) (2026-07-22)
+
+
+### Features
+
+* **api:** add interactive Swagger documentation ([89194e7](https://github.com/Jhomel-Dev/Minecraft-server/commit/89194e7117d015f948c0385813a8a7f953f92274))
+
+# [2.6.0](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.5.0...v2.6.0) (2026-07-22)
+
+
+### Features
+
+* **backend:** standardize API and Agent logs to english for robust E2E parsing ([d8b2c15](https://github.com/Jhomel-Dev/Minecraft-server/commit/d8b2c15d641abf41db847e29d4256876544e039c))
+* **i18n:** implement next-intl across all dashboard components and landing page ([c4586c9](https://github.com/Jhomel-Dev/Minecraft-server/commit/c4586c949353660b0ae2173e2031853d471bcc5d))
+
+# [2.5.0](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.4.0...v2.5.0) (2026-07-22)
+
+
+### Bug Fixes
+
+* **ci:** bypass rate limiters during E2E testing to prevent 429 timeouts ([8a81e38](https://github.com/Jhomel-Dev/Minecraft-server/commit/8a81e38a2d16e68eb5d3fd2256398328ee8f9c38))
+
+
+### Features
+
+* **agent:** implement Phase 2 security hardening (Sanitize serverId and JVM args) ([0461e3b](https://github.com/Jhomel-Dev/Minecraft-server/commit/0461e3bc9a5f790d937f451daca5f354dee90012))
+* **api:** implement Phase 1 security hardening (Helmet, CORS, Rate Limit) ([97f54d1](https://github.com/Jhomel-Dev/Minecraft-server/commit/97f54d12dc16137fa98f1cf5e7a57a9a8e052da5))
+
 # [2.4.0](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.3.0...v2.4.0) (2026-07-21)
 
 
