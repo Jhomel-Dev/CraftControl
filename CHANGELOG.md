@@ -1,3 +1,17 @@
+# [2.9.0](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.8.0...v2.9.0) (2026-07-25)
+
+
+### Bug Fixes
+
+* **agent:** gracefully disconnect socket.io connection before process exit ([3f2fba2](https://github.com/Jhomel-Dev/Minecraft-server/commit/3f2fba2fc9415d95270dd7d9eea787345e05d0ec))
+
+
+### Features
+
+* **agent:** implement minimize to system tray and background execution ([75241d9](https://github.com/Jhomel-Dev/Minecraft-server/commit/75241d96d1112e847b2b8d9bad495104f6fc4797))
+* **web:** block server actions globally when agent disconnects ([04bd74b](https://github.com/Jhomel-Dev/Minecraft-server/commit/04bd74b96d834939bcccd579c9299dd55b8999ba))
+* **web:** implement skeleton loading and suppress polling logs ([faefec6](https://github.com/Jhomel-Dev/Minecraft-server/commit/faefec6d8be4fb77d68e0529f3ebc8fd195cd4b7))
+
 # [2.8.0](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.7.4...v2.8.0) (2026-07-24)
 
 
