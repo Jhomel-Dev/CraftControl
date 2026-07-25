@@ -63,6 +63,10 @@ btnUnlink.addEventListener('click', () => {
   invoke('request_unlink').catch(() => {});
 });
 
+btnShutdown.addEventListener('click', () => {
+  invoke('request_shutdown').catch(() => {});
+});
+
 const btnRefreshPin = document.getElementById('btnRefreshPin');
 if (btnRefreshPin) {
   btnRefreshPin.addEventListener('click', () => {
@@ -80,9 +84,8 @@ if (btnRefreshPin) {
   });
 }
 
-btnShutdown.addEventListener('click', () => {
-  invoke('request_shutdown').catch(() => {});
-});
+
+
 
 renderAgentState({ status: 'loading' });
 
