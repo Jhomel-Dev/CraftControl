@@ -35,6 +35,10 @@ const start = async () => {
       }
       
       console.log('[System] Apagado completado. Saliendo...');
+      if (agent && agent.connectionService) {
+        agent.connectionService.disconnect();
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
       process.exit(0);
     };
 
