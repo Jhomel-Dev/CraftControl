@@ -70,7 +70,7 @@ export default function ServerOptionsPage({ params }) {
         setRawPropertiesOrder(order);
       }
     } catch (e) {
-      console.error(e);
+      if (e.code !== 'AGENT_OFFLINE') console.error(e);
     } finally {
       setLoading(false);
     }
@@ -152,7 +152,19 @@ export default function ServerOptionsPage({ params }) {
   };
 
   if (loading) {
-    return <div className="p-8 text-center font-bold text-foreground/50">{t("loadingOptions")}</div>;
+    return (
+      <div className="p-4 sm:p-8 max-w-6xl mx-auto flex flex-col gap-6 animate-in fade-in h-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="bg-surface p-6 rounded-blocky border-2 border-surface-border animate-pulse flex flex-col gap-4">
+              <div className="w-32 h-6 bg-surface-border rounded" />
+              <div className="w-full h-10 bg-surface-border rounded" />
+              <div className="w-3/4 h-4 bg-surface-border rounded" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (

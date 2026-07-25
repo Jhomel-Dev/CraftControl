@@ -1,4 +1,6 @@
 use tauri::{AppHandle, Emitter, Manager};
+use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState};
+use tauri::menu::{Menu, MenuItem};
 use std::process::Command;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -13,6 +15,7 @@ async fn request_shutdown(app_handle: tauri::AppHandle) -> Result<(), String> {
     app_handle.exit(0);
     Ok(())
 }
+
 
 #[tauri::command]
 async fn request_refresh_pin() -> Result<(), String> {
@@ -54,7 +57,6 @@ fn spawn_detached_agent(app_handle: &AppHandle) {
     let file_name = if cfg!(target_os = "windows") { "agentcore.exe" } else { "agentcore" };
     let path = app_data.join(file_name);
     
-    // Only write if it doesn't exist or if we want to overwrite with latest (overwrite to be safe)
     let _ = std::fs::write(&path, AGENT_BIN);
     
     #[cfg(unix)]
@@ -139,19 +141,66 @@ pub fn run() {
         .setup(|app| {
             start_agent_polling_loop(app.handle().clone());
             spawn_detached_agent(app.handle());
+
+            let unlink_i = MenuItem::with_id(app, "unlink", "Desvincular Cuenta", true, None::<&str>)?;
+            let quit_i = MenuItem::with_id(app, "quit", "Apagar Agente", true, None::<&str>)?;
+            let show_i = MenuItem::with_id(app, "show", "Mostrar Ventana", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&show_i, &unlink_i, &quit_i])?;
+
+            let default_icon = app.default_window_icon().unwrap().clone();
+
+            let _tray = TrayIconBuilder::new()
+                .menu(&menu)
+                .icon(default_icon)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "unlink" => {
+                        tauri::async_runtime::spawn(async move {
+                            let _ = reqwest::Client::new()
+                                .post("http://127.0.0.1:45987/unlink")
+                                .send()
+                                .await;
+                        });
+                    }
+                    "quit" => {
+                        let app_clone = app.clone();
+                        tauri::async_runtime::spawn(async move {
+                            let _ = reqwest::Client::new()
+                                .post("http://127.0.0.1:45987/shutdown")
+                                .send()
+                                .await;
+                            app_clone.exit(0);
+                        });
+                    }
+                    "show" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| match event {
+                    TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } => {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    _ => {}
+                })
+                .build(app)?;
+
             Ok(())
         })
         .on_window_event(|window, event| match event {
             tauri::WindowEvent::CloseRequested { api, .. } => {
                 api.prevent_close();
-                let window_clone = window.clone();
-                tauri::async_runtime::spawn(async move {
-                    let _ = reqwest::Client::new()
-                        .post("http://127.0.0.1:45987/shutdown")
-                        .send()
-                        .await;
-                    let _ = window_clone.destroy();
-                });
+                let _ = window.hide();
             }
             _ => {}
         })

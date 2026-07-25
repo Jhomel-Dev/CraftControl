@@ -27,6 +27,7 @@ export default function FilesPage({ params }) {
   const [uploadingText, setUploadingText] = useState("");
   const fileInputRef = useRef(null);
   
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -34,12 +35,15 @@ export default function FilesPage({ params }) {
   }, [currentPath, serverId]);
 
   const loadFiles = async () => {
+    setLoading(true);
     try {
       const data = await fsOperation(serverId, { action: "list", filePath: currentPath || "/" });
       if (Array.isArray(data)) setFiles(data);
       else if (data.files) setFiles(data.files);
     } catch (err) {
-      console.error(err);
+      if (err.code !== 'AGENT_OFFLINE') console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -259,6 +263,22 @@ export default function FilesPage({ params }) {
             loadFiles();
           }} 
         />
+      ) : loading && files.length === 0 ? (
+        <div className="bg-surface border-2 border-surface-border rounded-blocky overflow-hidden shadow-sm flex flex-col">
+          {[1, 2, 3, 4, 5, 6, 7].map(i => (
+            <div key={i} className="flex items-center justify-between p-3 sm:p-4 border-b border-surface-border/50 animate-pulse">
+              <div className="flex items-center gap-4">
+                <div className="w-8 h-8 bg-surface-border rounded" />
+                <div className="w-48 h-5 bg-surface-border rounded" />
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-4 bg-surface-border rounded hidden sm:block" />
+                <div className="w-24 h-4 bg-surface-border rounded hidden sm:block" />
+                <div className="w-20 h-8 bg-surface-border rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <FileList 
           files={files} 

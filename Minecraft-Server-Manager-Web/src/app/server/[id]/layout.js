@@ -1,5 +1,6 @@
 import { DashboardNavbar } from "@/features/dashboard/components/DashboardNavbar";
 import { DashboardSidebar } from "@/features/dashboard/components/DashboardSidebar";
+import { AgentStatusBlocker } from "@/features/servers/components/AgentStatusBlocker";
 
 export default function ServerDashboardLayout({ children }) {
   return (
@@ -8,7 +9,9 @@ export default function ServerDashboardLayout({ children }) {
       <div className="flex flex-1 overflow-hidden">
         <DashboardSidebar />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background">
-          {children}
+          <AgentStatusBlocker>
+            {children}
+          </AgentStatusBlocker>
         </main>
       </div>
     </div>

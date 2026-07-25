@@ -10,6 +10,24 @@ import { getAgentStatus, unlinkAgentReq, hibernateAgentReq, wakeAgentReq } from 
 import { useToast } from "@/shared/ui/ToastProvider";
 import { useTranslations } from "next-intl";
 
+function ServerCardSkeleton() {
+  return (
+    <div className="bg-surface border-2 border-surface-border p-6 rounded-blocky h-full flex flex-col animate-pulse">
+      <div className="flex justify-between items-start mb-4">
+        <div className="w-12 h-12 bg-surface-border rounded-blocky" />
+        <div className="w-16 h-6 bg-surface-border rounded-full" />
+      </div>
+      <div className="w-3/4 h-7 bg-surface-border rounded mt-2" />
+      <div className="w-1/2 h-4 bg-surface-border rounded mt-2" />
+      <div className="w-1/3 h-4 bg-surface-border rounded mt-2" />
+      <div className="flex gap-2 mt-4">
+        <div className="w-4 h-4 bg-surface-border rounded" />
+        <div className="w-24 h-4 bg-surface-border rounded" />
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardHome() {
   const t = useTranslations("ServersPage");
   const { servers, serverSizes, loading, formatSize } = useServers();
@@ -44,7 +62,11 @@ export default function DashboardHome() {
     return (
       <div className="p-4 sm:p-8 max-w-6xl mx-auto flex flex-col gap-6 animate-in fade-in h-full">
         <Header hideLinkButton />
-        <p className="text-center text-foreground/50 font-bold mt-10">{t("loadingData")}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <ServerCardSkeleton />
+          <ServerCardSkeleton />
+          <ServerCardSkeleton />
+        </div>
       </div>
     );
   }
