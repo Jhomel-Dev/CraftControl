@@ -1,3 +1,10 @@
+## [2.9.1](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.9.0...v2.9.1) (2026-07-25)
+
+
+### Bug Fixes
+
+* **agent:** persist credentials, graceful disconnect, and local API priority ([a89cf59](https://github.com/Jhomel-Dev/Minecraft-server/commit/a89cf59696085946c5a74e33a86264a46d8c8f7c))
+
 # [2.9.0](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.8.0...v2.9.0) (2026-07-25)
 
 
