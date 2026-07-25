@@ -50,7 +50,12 @@ const authFetch = async (endpoint, options = {}) => {
 
   if (!res.ok) {
     const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.error || "API Request Failed");
+    const errorMsg = errData.error || "API Request Failed";
+    const error = new Error(errorMsg);
+    if (res.status === 503 || errorMsg === "Agent offline") {
+      error.code = 'AGENT_OFFLINE';
+    }
+    throw error;
   }
 
   return res.json();

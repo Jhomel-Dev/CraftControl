@@ -50,7 +50,7 @@ export default function BackupsPage() {
       const data = await getBackups(serverId);
       setBackups(data || []);
     } catch (err) {
-      setError("Error al cargar los backups: " + err.message);
+      if (err.code !== 'AGENT_OFFLINE') setError("Error al cargar los backups: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -278,9 +278,25 @@ export default function BackupsPage() {
             
             <div className="flex-1 flex flex-col">
               {loading && backups.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center text-foreground/50 gap-2">
-                  <Loader2 className="w-5 h-5 animate-spin" /> Cargando backups...
-                </div>
+                <>
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="grid grid-cols-12 gap-4 p-4 border-b border-surface-border/30 items-center animate-pulse">
+                      <div className="col-span-5 flex items-center gap-3">
+                        <div className="w-5 h-5 bg-surface-border rounded shrink-0" />
+                        <div className="flex flex-col gap-2 w-full">
+                          <div className="w-1/2 h-4 bg-surface-border rounded" />
+                          <div className="w-1/3 h-3 bg-surface-border rounded" />
+                        </div>
+                      </div>
+                      <div className="col-span-2"><div className="w-16 h-4 bg-surface-border rounded" /></div>
+                      <div className="col-span-3"><div className="w-24 h-4 bg-surface-border rounded" /></div>
+                      <div className="col-span-2 flex justify-center gap-2">
+                        <div className="w-8 h-8 bg-surface-border rounded" />
+                        <div className="w-8 h-8 bg-surface-border rounded" />
+                      </div>
+                    </div>
+                  ))}
+                </>
               ) : backups.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-foreground/50 gap-2 opacity-50 p-8 text-center">
                   <Archive className="w-12 h-12 mb-2" />

@@ -29,6 +29,7 @@ export default function ServerConsolePage({ params }) {
         onStart={handleStart} 
         onStop={handleStop} 
         onRestart={handleRestart} 
+        isConnected={isConnected}
       />
       
       <ErrorBanner errorMsg={errorMsg} onClose={clearError} />
@@ -41,7 +42,7 @@ export default function ServerConsolePage({ params }) {
   );
 }
 
-function ConsoleHeader({ server, serverId, onStart, onStop, onRestart }) {
+function ConsoleHeader({ server, serverId, onStart, onStop, onRestart, isConnected }) {
   const t = useTranslations("ServerConsole");
   const isOnline = server?.status === 'ONLINE';
   const isOffline = server?.status === 'OFFLINE' || !server;
@@ -64,13 +65,13 @@ function ConsoleHeader({ server, serverId, onStart, onStop, onRestart }) {
       </div>
       
       <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
-        <Button data-cy="console-start-btn" variant="outline" className="border-green-500 text-green-500 hover:bg-green-500/10 flex-1 sm:flex-none" onClick={onStart} disabled={isOnline || isTransitioning}>
+        <Button data-cy="console-start-btn" variant="outline" className="border-green-500 text-green-500 hover:bg-green-500/10 flex-1 sm:flex-none" onClick={onStart} disabled={isOnline || isTransitioning || !isConnected}>
           <Play className="w-4 h-4 mr-1 sm:mr-2 inline-block" /> <span className="hidden sm:inline">{t('start')}</span>
         </Button>
-        <Button data-cy="console-stop-btn" variant="outline" className="border-red-500 text-red-500 hover:bg-red-500/10 flex-1 sm:flex-none" onClick={onStop} disabled={isOffline || isTransitioning}>
+        <Button data-cy="console-stop-btn" variant="outline" className="border-red-500 text-red-500 hover:bg-red-500/10 flex-1 sm:flex-none" onClick={onStop} disabled={isOffline || isTransitioning || !isConnected}>
           <Square className="w-4 h-4 mr-1 sm:mr-2 inline-block" /> <span className="hidden sm:inline">{t('stop')}</span>
         </Button>
-        <Button variant="outline" className="border-blue-500 text-blue-500 hover:bg-blue-500/10 flex-1 sm:flex-none" onClick={onRestart} disabled={isOffline || isTransitioning}>
+        <Button variant="outline" className="border-blue-500 text-blue-500 hover:bg-blue-500/10 flex-1 sm:flex-none" onClick={onRestart} disabled={isOffline || isTransitioning || !isConnected}>
           <RotateCw className="w-4 h-4 mr-1 sm:mr-2 inline-block" /> <span className="hidden sm:inline">{t('restart')}</span>
         </Button>
 
