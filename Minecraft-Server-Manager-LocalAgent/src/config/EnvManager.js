@@ -1,17 +1,35 @@
 import fs from 'fs';
-
 import path from 'path';
+import os from 'os';
+
+const getAppDataPath = () => {
+  if (process.env.APPDATA) {
+    return path.join(process.env.APPDATA, 'minecraft-server-manager-agent');
+  } else if (process.platform === 'darwin') {
+    return path.join(os.homedir(), 'Library', 'Application Support', 'minecraft-server-manager-agent');
+  } else {
+    return path.join(os.homedir(), '.config', 'minecraft-server-manager-agent');
+  }
+};
+
+const appDataDir = getAppDataPath();
+if (process.pkg && !fs.existsSync(appDataDir)) {
+  fs.mkdirSync(appDataDir, { recursive: true });
+}
 
 const DEFAULT_API_URL = 'https://minecraft-server-pl80.onrender.com';
 const ENV_PATH = process.pkg 
-  ? path.join(path.dirname(process.execPath), '.env')
+  ? path.join(appDataDir, '.env')
   : path.join(process.cwd(), '.env');
 
 export default class EnvManager {
+  static ENV_PATH = ENV_PATH;
+
   static getApiUrl() {
+    if (process.env.API_URL) return process.env.API_URL;
     const argUrl = process.argv.find(arg => arg.startsWith('--api='));
     if (argUrl) return argUrl.split('=')[1];
-    return process.env.API_URL || DEFAULT_API_URL;
+    return DEFAULT_API_URL;
   }
 
   static getAgentToken() {

@@ -1,5 +1,6 @@
 import ConnectionService from '../services/ConnectionService.js';
 import FileService from '../services/FileService.js';
+import EnvManager from '../config/EnvManager.js';
 import PlayerStatsService from '../services/PlayerStatsService.js';
 import BackupService from '../services/BackupService.js';
 import ServerManagerService from '../services/ServerManagerService.js';
@@ -82,11 +83,11 @@ export default class LocalAgentController {
       await this.serverManager.stopAllServers();
 
       try {
-        let envContent = await fs.readFile('.env', 'utf8');
-        envContent = envContent.replace(/AGENT_SECRET_TOKEN=.*/g, '');
-        await fs.writeFile('.env', envContent);
+        EnvManager.saveTokenToEnv('');
         console.log('Local credentials cleared.');
-      } catch(e) {}
+      } catch(e) {
+        console.error('Failed to clear local credentials:', e);
+      }
       console.log('Agent disconnected. Shutting down process in 3s...');
       setTimeout(() => process.exit(0), 3000);
     });

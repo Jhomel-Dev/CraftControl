@@ -1,6 +1,8 @@
-import 'dotenv/config';
-import fs from 'fs/promises';
+import dotenv from 'dotenv';
 import EnvManager from './src/config/EnvManager.js';
+dotenv.config({ path: EnvManager.ENV_PATH });
+
+import fs from 'fs/promises';
 import PairingService from './src/services/PairingService.js';
 import LocalAgentController from './src/controllers/LocalAgentController.js';
 import LocalDaemonController from './src/controllers/LocalDaemonController.js';
@@ -33,6 +35,11 @@ const start = async () => {
           }
         }
       }
+      if (agent && agent.connectionService && agent.connectionService.socket) {
+        console.log('[System] Notificando desconexión a la nube...');
+        agent.connectionService.socket.disconnect();
+        await new Promise(r => setTimeout(r, 200));
+      }
       
       console.log('[System] Apagado completado. Saliendo...');
       if (agent && agent.connectionService) {
@@ -50,6 +57,7 @@ const start = async () => {
     console.log(`\n[System] El agente está configurado para conectarse a: ${apiUrl}`);
     const isSetupMode = process.argv.includes('--setup');
     let agentToken = EnvManager.getAgentToken();
+    console.log(`[DEBUG] Loaded agentToken from EnvManager: type=${typeof agentToken}, value='${agentToken}'`);
 
     daemon.onUnlink(async () => {
       console.log('\n[System] Desvinculación solicitada vía Local API.');
