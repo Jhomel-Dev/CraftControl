@@ -63,7 +63,9 @@ export default function PlayersPage({ params }) {
       
       setPlayers(enrichedPlayers);
     } catch (error) {
-      console.error("Error loading players:", error);
+      if (error.code !== 'AGENT_OFFLINE') {
+        console.error("Error loading players:", error);
+      }
     } finally {
       setLoading(false);
     }
@@ -243,7 +245,9 @@ export default function PlayersPage({ params }) {
         }
       }
     } catch (err) {
-      console.error("Error comprobando whitelist:", err);
+      if (err.code !== 'AGENT_OFFLINE') {
+        console.error("Error comprobando whitelist:", err);
+      }
     }
   };
 
@@ -256,7 +260,27 @@ export default function PlayersPage({ params }) {
     return () => clearInterval(interval);
   }, [serverId]);
 
-  if (loading && players.length === 0) return <div className="p-8 text-center animate-pulse">{t("loadingWorldData")}</div>;
+  if (loading && players.length === 0) {
+    return (
+      <div className="p-4 sm:p-8 max-w-6xl mx-auto flex flex-col gap-6 animate-in fade-in h-full">
+        <div className="flex justify-between items-center bg-surface p-4 rounded-blocky border-2 border-surface-border mb-6">
+          <div className="w-48 h-8 bg-surface-border rounded animate-pulse" />
+          <div className="w-16 h-8 bg-surface-border rounded animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="flex items-center gap-4 bg-surface p-4 rounded-blocky border-2 border-surface-border animate-pulse">
+              <div className="w-10 h-10 bg-surface-border rounded-blocky" />
+              <div className="flex flex-col gap-2 flex-1">
+                <div className="w-24 h-5 bg-surface-border rounded" />
+                <div className="w-16 h-3 bg-surface-border rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 max-w-6xl mx-auto flex flex-col gap-6 animate-in fade-in h-full">
