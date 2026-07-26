@@ -67,3 +67,50 @@ fn read_port_from_env_file(app_data: &PathBuf) -> Option<u16> {
     }
     None
 }
+
+pub fn remove_daemon_lockfiles(app_handle: Option<&AppHandle>) {
+    for lock_path in get_daemon_lockfile_paths(app_handle) {
+        let _ = fs::remove_file(lock_path);
+    }
+}
+
+fn get_daemon_lockfile_paths(app_handle: Option<&AppHandle>) -> Vec<PathBuf> {
+    get_agent_config_dirs(app_handle)
+        .into_iter()
+        .map(|dir| dir.join("daemon.lock"))
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_resolve_default_port() {
+        std::env::remove_var("DAEMON_PORT");
+        let port = resolve_daemon_port(None);
+        assert!(port >= 45987);
+    }
+
+    #[test]
+    fn test_read_port_from_env_string() {
+        let temp_dir = std::env::temp_dir().join("mc_test_env_port");
+        let _ = fs::create_dir_all(&temp_dir);
+        let env_path = temp_dir.join(".env");
+        let _ = fs::write(&env_path, "DAEMON_PORT=45999\n");
+        let port = read_port_from_env_file(&temp_dir);
+        assert_eq!(port, Some(45999));
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_read_port_from_lockfile() {
+        let temp_dir = std::env::temp_dir().join("mc_test_lock_port");
+        let _ = fs::create_dir_all(&temp_dir);
+        let lock_path = temp_dir.join("daemon.lock");
+        let _ = fs::write(&lock_path, r#"{"port":45988,"pid":12345}"#);
+        let port = read_port_from_lockfile(&temp_dir);
+        assert_eq!(port, Some(45988));
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+}

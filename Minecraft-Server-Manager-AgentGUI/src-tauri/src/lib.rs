@@ -1,3 +1,5 @@
+use tauri::Manager;
+
 mod commands;
 mod config;
 mod daemon;
@@ -13,13 +15,15 @@ pub fn run() {
     }
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(handle_single_instance))
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             commands::request_shutdown,
             commands::request_refresh_pin,
-            commands::request_unlink
+            commands::request_unlink,
+            commands::get_daemon_base_url
         ])
         .setup(|app| {
             tray::setup_system_tray(app)?;
@@ -30,6 +34,15 @@ pub fn run() {
         .on_window_event(handle_window_event)
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+fn handle_single_instance(app: &tauri::AppHandle, _args: Vec<String>, _cwd: String) {
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    let _ = window.show();
+    let _ = window.unminimize();
+    let _ = window.set_focus();
 }
 
 fn handle_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
