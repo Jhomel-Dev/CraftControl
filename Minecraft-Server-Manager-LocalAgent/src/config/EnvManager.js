@@ -13,7 +13,7 @@ const getAppDataPath = () => {
 };
 
 const appDataDir = getAppDataPath();
-if (process.pkg && !fs.existsSync(appDataDir)) {
+if (!fs.existsSync(appDataDir)) {
   fs.mkdirSync(appDataDir, { recursive: true });
 }
 
@@ -50,6 +50,9 @@ export default class EnvManager {
   }
 
   static writeDaemonLock(port) {
+    if (!fs.existsSync(appDataDir)) {
+      fs.mkdirSync(appDataDir, { recursive: true });
+    }
     const data = {
       pid: process.pid,
       port: Number(port),
