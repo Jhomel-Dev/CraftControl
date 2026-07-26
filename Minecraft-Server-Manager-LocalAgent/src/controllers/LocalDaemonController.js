@@ -3,7 +3,7 @@ import EnvManager from '../config/EnvManager.js';
 import SmartBootService from '../services/SmartBootService.js';
 
 export default class LocalDaemonController {
-  constructor(port = process.env.DAEMON_PORT || 45987) {
+  constructor(port = EnvManager.getDaemonPort()) {
     this.port = port;
     this.status = 'initializing';
     this.server = null;
@@ -12,21 +12,30 @@ export default class LocalDaemonController {
   }
 
   async start() {
-    await SmartBootService.checkPortAndKillIfImposter(this.port);
+    await SmartBootService.runPreflightCleanup();
+    await this._bindToAvailablePort(this.port);
+    EnvManager.writeDaemonLock(this.port);
+  }
 
-    return new Promise((resolve, reject) => {
-      this.server = http.createServer((req, res) => this.handleRequest(req, res));
-      
-      this.server.on('error', async (err) => {
-        if (err.code === 'EADDRINUSE') {
-          console.error(`[ERROR] Could not free port ${this.port}. Forcing exit.`);
-          process.exit(1);
-        }
-        reject(err);
-      });
+  async _bindToAvailablePort(startPort) {
+    let currentPort = Number(startPort) || 45987;
+    while (true) {
+      const bound = await this._tryListen(currentPort);
+      if (bound) {
+        this.port = currentPort;
+        return;
+      }
+      currentPort += 1;
+    }
+  }
 
-      this.server.listen(this.port, '127.0.0.1', () => {
-        resolve();
+  _tryListen(port) {
+    return new Promise((resolve) => {
+      const tempServer = http.createServer((req, res) => this.handleRequest(req, res));
+      tempServer.once('error', () => resolve(false));
+      tempServer.listen(port, '127.0.0.1', () => {
+        this.server = tempServer;
+        resolve(true);
       });
     });
   }

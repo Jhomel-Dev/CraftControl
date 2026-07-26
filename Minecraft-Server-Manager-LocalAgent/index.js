@@ -13,6 +13,8 @@ const handleSetupModeExit = (message) => {
   process.exit(0);
 };
 
+process.title = 'craftcontrol-daemon';
+
 const start = async () => {
   try {
     const daemon = new LocalDaemonController();
@@ -46,6 +48,7 @@ const start = async () => {
         agent.connectionService.disconnect();
         await new Promise(resolve => setTimeout(resolve, 200));
       }
+      EnvManager.deleteDaemonLock();
       process.exit(0);
     };
 

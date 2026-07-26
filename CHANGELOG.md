@@ -1,3 +1,36 @@
+## [2.9.1](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.9.0...v2.9.1) (2026-07-25)
+
+
+### Bug Fixes
+
+* **agent:** persist credentials, graceful disconnect, and local API priority ([a89cf59](https://github.com/Jhomel-Dev/Minecraft-server/commit/a89cf59696085946c5a74e33a86264a46d8c8f7c))
+
+# [2.9.0](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.8.0...v2.9.0) (2026-07-25)
+
+
+### Bug Fixes
+
+* **agent:** gracefully disconnect socket.io connection before process exit ([3f2fba2](https://github.com/Jhomel-Dev/Minecraft-server/commit/3f2fba2fc9415d95270dd7d9eea787345e05d0ec))
+
+
+### Features
+
+* **agent:** implement minimize to system tray and background execution ([75241d9](https://github.com/Jhomel-Dev/Minecraft-server/commit/75241d96d1112e847b2b8d9bad495104f6fc4797))
+* **web:** block server actions globally when agent disconnects ([04bd74b](https://github.com/Jhomel-Dev/Minecraft-server/commit/04bd74b96d834939bcccd579c9299dd55b8999ba))
+* **web:** implement skeleton loading and suppress polling logs ([faefec6](https://github.com/Jhomel-Dev/Minecraft-server/commit/faefec6d8be4fb77d68e0529f3ebc8fd195cd4b7))
+
+# [2.8.0](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.7.4...v2.8.0) (2026-07-24)
+
+
+### Bug Fixes
+
+* **agent:** intercept window close event to gracefully shutdown local daemon ([b4555ef](https://github.com/Jhomel-Dev/Minecraft-server/commit/b4555ef1bdfe732ee866dcf32f01260e8641d6f5))
+
+
+### Features
+
+* **web:** improve offline agent ux in server cards and fix translation keys ([e262908](https://github.com/Jhomel-Dev/Minecraft-server/commit/e262908b89bd074e75ba5a25a2365d8c27dd9b52))
+
 ## [2.7.4](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.7.3...v2.7.4) (2026-07-23)
 
 
