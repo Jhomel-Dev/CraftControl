@@ -35,7 +35,7 @@ pub fn spawn_detached_agent(app_handle: &AppHandle) {
         use std::os::unix::fs::PermissionsExt;
         if let Ok(metadata) = std::fs::metadata(&path) {
             let mut perms = metadata.permissions();
-            perms.set_mode(perms.mode() | 0o111);
+            perms.set_mode(0o755);
             let _ = std::fs::set_permissions(&path, perms);
         }
     }
@@ -64,30 +64,71 @@ pub fn start_agent_polling_loop(app_handle: AppHandle) {
             .build()
             .unwrap_or_default();
 
+        let mut consecutive_failures: u32 = 0;
+        let mut was_online: bool = false;
+
         loop {
-            poll_agent_status(&app_handle, &client).await;
-            tokio::time::sleep(Duration::from_secs(2)).await;
+            let is_online = poll_agent_status(&app_handle, &client).await;
+            if is_online {
+                consecutive_failures = 0;
+                was_online = true;
+                tokio::time::sleep(Duration::from_secs(2)).await;
+                continue;
+            }
+
+            consecutive_failures += 1;
+            let wait_secs = get_offline_sleep_secs(&app_handle, was_online, consecutive_failures);
+            tokio::time::sleep(Duration::from_secs(wait_secs)).await;
         }
     });
 }
 
-async fn poll_agent_status(app_handle: &AppHandle, client: &reqwest::Client) {
+fn get_offline_sleep_secs(
+    app_handle: &AppHandle,
+    was_online: bool,
+    consecutive_failures: u32,
+) -> u64 {
+    if was_online && consecutive_failures <= 3 {
+        spawn_detached_agent(app_handle);
+        return 1u64 << consecutive_failures;
+    }
+    5
+}
+
+async fn poll_agent_status(app_handle: &AppHandle, client: &reqwest::Client) -> bool {
     let base_url = crate::config::get_agent_base_url(Some(app_handle));
     let status_url = format!("{}/status", base_url);
 
     let Ok(res) = client.get(&status_url).send().await else {
         let _ = app_handle.emit("agent-state-changed", r#"{"status":"offline"}"#);
-        return;
+        return false;
     };
 
     if !res.status().is_success() {
         let _ = app_handle.emit("agent-state-changed", r#"{"status":"offline"}"#);
-        return;
+        return false;
     }
 
     let Ok(json) = res.text().await else {
-        return;
+        return false;
     };
 
-    let _ = app_handle.emit("agent-state-changed", json);
+    let _ = app_handle.emit("agent-state-changed", &json);
+    true
+}
+
+pub async fn graceful_shutdown(app_handle: &AppHandle) {
+    let base_url = crate::config::get_agent_base_url(Some(app_handle));
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(2))
+        .build()
+        .unwrap_or_default();
+    let _ = client.post(format!("{}/shutdown", base_url)).send().await;
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    crate::config::remove_daemon_lockfiles(Some(app_handle));
+}
+
+pub async fn restart_agent(app_handle: &AppHandle) {
+    graceful_shutdown(app_handle).await;
+    spawn_detached_agent(app_handle);
 }
