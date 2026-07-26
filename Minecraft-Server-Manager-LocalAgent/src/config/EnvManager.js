@@ -21,9 +21,49 @@ const DEFAULT_API_URL = 'https://minecraft-server-pl80.onrender.com';
 const ENV_PATH = process.pkg 
   ? path.join(appDataDir, '.env')
   : path.join(process.cwd(), '.env');
+const LOCK_PATH = path.join(appDataDir, 'daemon.lock');
 
 export default class EnvManager {
   static ENV_PATH = ENV_PATH;
+
+  static getLockfilePath() {
+    return LOCK_PATH;
+  }
+
+  static getDaemonPort() {
+    const rawPort = process.env.DAEMON_PORT || '45987';
+    return parseInt(rawPort, 10);
+  }
+
+  static saveDaemonPort(port) {
+    this._updateEnvVar('DAEMON_PORT', String(port));
+  }
+
+  static readDaemonLock() {
+    if (!fs.existsSync(LOCK_PATH)) return null;
+    try {
+      const content = fs.readFileSync(LOCK_PATH, 'utf8');
+      return JSON.parse(content);
+    } catch {
+      return null;
+    }
+  }
+
+  static writeDaemonLock(port) {
+    const data = {
+      pid: process.pid,
+      port: Number(port),
+      timestamp: Date.now()
+    };
+    fs.writeFileSync(LOCK_PATH, JSON.stringify(data, null, 2), 'utf8');
+  }
+
+  static deleteDaemonLock() {
+    if (!fs.existsSync(LOCK_PATH)) return;
+    try {
+      fs.unlinkSync(LOCK_PATH);
+    } catch {}
+  }
 
   static getApiUrl() {
     if (process.env.API_URL) return process.env.API_URL;
