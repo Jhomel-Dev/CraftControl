@@ -1,3 +1,19 @@
+# [2.10.0](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.9.1...v2.10.0) (2026-07-27)
+
+
+### Bug Fixes
+
+* **local-agent:** ensure config dir creation for daemon.lock in CI environments ([cfc66b1](https://github.com/Jhomel-Dev/Minecraft-server/commit/cfc66b1f9876e0aa494630470abfb5a711c9d491))
+* **web:** fetch pending server size continuously without requiring page refresh ([e988068](https://github.com/Jhomel-Dev/Minecraft-server/commit/e9880681d9c2acaf8ccbbf04b5ce3a6319f18dd0))
+
+
+### Features
+
+* **agent-gui:** add single-instance plugin and lockfile path unit tests ([a10abbb](https://github.com/Jhomel-Dev/Minecraft-server/commit/a10abbbd8dada0f3b87643eeb83b8b606a1977f6))
+* **agent-gui:** enable dynamic port resolution in frontend dev methods ([bd846b9](https://github.com/Jhomel-Dev/Minecraft-server/commit/bd846b92f01f2e7eab78b48435feff228f8bf7fa))
+* **agent-gui:** implement daemon watchdog with backoff and graceful shutdown ([ec4ddd8](https://github.com/Jhomel-Dev/Minecraft-server/commit/ec4ddd82683bad638590224a3640196c1f4b01ae))
+* **local-agent:** implement smartboot sweep and auto-increment port hunting ([1662511](https://github.com/Jhomel-Dev/Minecraft-server/commit/16625117304f9af67f9ce9050064aa2c331acb95))
+
 ## [2.9.1](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.9.0...v2.9.1) (2026-07-25)
 
 
