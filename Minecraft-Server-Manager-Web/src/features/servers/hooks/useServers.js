@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { getMyServers, fsOperation } from "@/features/servers/services/serverApi";
 import { useRouter } from "next/navigation";
 
@@ -6,12 +6,14 @@ export function useServers() {
   const [servers, setServers] = useState([]);
   const [serverSizes, setServerSizes] = useState({});
   const [loading, setLoading] = useState(true);
+  const serverSizesRef = useRef({});
   const router = useRouter();
 
   const loadServerSize = async (serverId) => {
     try {
       const res = await fsOperation(serverId, { action: "size", filePath: "." });
       if (res && res.size !== undefined) {
+        serverSizesRef.current[serverId] = res.size;
         setServerSizes(prev => ({ ...prev, [serverId]: res.size }));
       }
     } catch {}
@@ -21,13 +23,13 @@ export function useServers() {
     try {
       const data = await getMyServers();
       const serverList = Array.isArray(data) ? data : [];
-      
-
-      
       setServers(serverList);
-      if (isInitial) {
-        serverList.forEach(server => loadServerSize(server.id));
-      }
+      
+      serverList.forEach(server => {
+        if (serverSizesRef.current[server.id] === undefined) {
+          loadServerSize(server.id);
+        }
+      });
     } catch {
     } finally {
       if (isInitial) setLoading(false);

@@ -35,11 +35,7 @@ fn handle_menu_event(app: &AppHandle, event: tauri::menu::MenuEvent) {
         "quit" => {
             let handle = app.clone();
             tauri::async_runtime::spawn(async move {
-                let base_url = crate::config::get_agent_base_url(Some(&handle));
-                let _ = reqwest::Client::new()
-                    .post(format!("{}/shutdown", base_url))
-                    .send()
-                    .await;
+                crate::daemon::graceful_shutdown(&handle).await;
                 handle.exit(0);
             });
         }
