@@ -1,0 +1,134 @@
+use std::process::Command;
+use std::time::Duration;
+use tauri::{AppHandle, Emitter, Manager};
+
+#[cfg(target_os = "linux")]
+const AGENT_BIN: &[u8] = include_bytes!("../bin/agentcore-x86_64-unknown-linux-gnu");
+
+#[cfg(target_os = "windows")]
+const AGENT_BIN: &[u8] = include_bytes!("../bin/agentcore-x86_64-pc-windows-msvc.exe");
+
+#[cfg(not(any(target_os = "linux", target_os = "windows")))]
+const AGENT_BIN: &[u8] = &[];
+
+pub fn spawn_detached_agent(app_handle: &AppHandle) {
+    if AGENT_BIN.is_empty() {
+        return;
+    }
+
+    let Ok(app_data) = app_handle.path().app_data_dir() else {
+        return;
+    };
+    let _ = std::fs::create_dir_all(&app_data);
+
+    let file_name = if cfg!(target_os = "windows") {
+        "agentcore.exe"
+    } else {
+        "agentcore"
+    };
+    let path = app_data.join(file_name);
+
+    let _ = std::fs::write(&path, AGENT_BIN);
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if let Ok(metadata) = std::fs::metadata(&path) {
+            let mut perms = metadata.permissions();
+            perms.set_mode(0o755);
+            let _ = std::fs::set_permissions(&path, perms);
+        }
+    }
+
+    let mut cmd = Command::new(&path);
+
+    if cfg!(debug_assertions) {
+        cmd.arg("--api=https://craft-control-api-staging.onrender.com");
+    } else {
+        cmd.arg("--api=https://minecraft-server-pl80.onrender.com");
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x00000008 | 0x08000000);
+    }
+
+    let _ = cmd.spawn();
+}
+
+pub fn start_agent_polling_loop(app_handle: AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(1))
+            .build()
+            .unwrap_or_default();
+
+        let mut consecutive_failures: u32 = 0;
+        let mut was_online: bool = false;
+
+        loop {
+            let is_online = poll_agent_status(&app_handle, &client).await;
+            if is_online {
+                consecutive_failures = 0;
+                was_online = true;
+                tokio::time::sleep(Duration::from_secs(2)).await;
+                continue;
+            }
+
+            consecutive_failures += 1;
+            let wait_secs = get_offline_sleep_secs(&app_handle, was_online, consecutive_failures);
+            tokio::time::sleep(Duration::from_secs(wait_secs)).await;
+        }
+    });
+}
+
+fn get_offline_sleep_secs(
+    app_handle: &AppHandle,
+    was_online: bool,
+    consecutive_failures: u32,
+) -> u64 {
+    if was_online && consecutive_failures <= 3 {
+        spawn_detached_agent(app_handle);
+        return 1u64 << consecutive_failures;
+    }
+    5
+}
+
+async fn poll_agent_status(app_handle: &AppHandle, client: &reqwest::Client) -> bool {
+    let base_url = crate::config::get_agent_base_url(Some(app_handle));
+    let status_url = format!("{}/status", base_url);
+
+    let Ok(res) = client.get(&status_url).send().await else {
+        let _ = app_handle.emit("agent-state-changed", r#"{"status":"offline"}"#);
+        return false;
+    };
+
+    if !res.status().is_success() {
+        let _ = app_handle.emit("agent-state-changed", r#"{"status":"offline"}"#);
+        return false;
+    }
+
+    let Ok(json) = res.text().await else {
+        return false;
+    };
+
+    let _ = app_handle.emit("agent-state-changed", &json);
+    true
+}
+
+pub async fn graceful_shutdown(app_handle: &AppHandle) {
+    let base_url = crate::config::get_agent_base_url(Some(app_handle));
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(2))
+        .build()
+        .unwrap_or_default();
+    let _ = client.post(format!("{}/shutdown", base_url)).send().await;
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    crate::config::remove_daemon_lockfiles(Some(app_handle));
+}
+
+pub async fn restart_agent(app_handle: &AppHandle) {
+    graceful_shutdown(app_handle).await;
+    spawn_detached_agent(app_handle);
+}

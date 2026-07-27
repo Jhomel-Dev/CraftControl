@@ -47,7 +47,7 @@ const renderAgentState = (state) => {
 
 listen('agent-state-changed', (event) => {
   try {
-    const state = JSON.parse(event.payload);
+    const state = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload;
     renderAgentState(state);
   } catch (e) {}
 });
@@ -89,9 +89,12 @@ if (btnRefreshPin) {
 
 renderAgentState({ status: 'loading' });
 
+const getDaemonUrl = async () => invoke('get_daemon_base_url').catch(() => 'http://127.0.0.1:45987');
+
 window.switchToStaging = async () => {
   try {
-    await fetch('http://127.0.0.1:45987/set-api', {
+    const baseUrl = await getDaemonUrl();
+    await fetch(`${baseUrl}/set-api`, {
       method: 'POST',
       body: JSON.stringify({ apiUrl: 'https://craft-control-api-staging.onrender.com' })
     });
@@ -104,7 +107,8 @@ window.switchToStaging = async () => {
 
 window.switchToProduction = async () => {
   try {
-    await fetch('http://127.0.0.1:45987/set-api', {
+    const baseUrl = await getDaemonUrl();
+    await fetch(`${baseUrl}/set-api`, {
       method: 'POST',
       body: JSON.stringify({ apiUrl: 'https://minecraft-server-pl80.onrender.com' })
     });
@@ -117,8 +121,9 @@ window.switchToProduction = async () => {
 
 window.switchToLocal = async (port = 3000) => {
   try {
+    const baseUrl = await getDaemonUrl();
     const localUrl = `http://localhost:${port}`;
-    await fetch('http://127.0.0.1:45987/set-api', {
+    await fetch(`${baseUrl}/set-api`, {
       method: 'POST',
       body: JSON.stringify({ apiUrl: localUrl })
     });
@@ -131,7 +136,8 @@ window.switchToLocal = async (port = 3000) => {
 
 window.checkServer = async () => {
   try {
-    const res = await fetch('http://127.0.0.1:45987/status');
+    const baseUrl = await getDaemonUrl();
+    const res = await fetch(`${baseUrl}/status`);
     const data = await res.json();
     console.log(`%c[Sistema] El agente está conectado a: ${data.apiUrl || 'Desconocido'}`, 'color: #00ff00; font-size: 14px; font-weight: bold;');
     return data.apiUrl;
