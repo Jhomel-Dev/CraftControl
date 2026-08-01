@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
 import { useServerMetrics } from "../hooks/useServerMetrics";
 import { Cpu, MemoryStick } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export function PerformanceCharts({ serverId, maxMemoryMB = 4096, status }) {
+  const t = useTranslations("ServerOverview");
   const { metrics, isConnected } = useServerMetrics(serverId);
   const [data, setData] = useState([]);
 
@@ -28,24 +30,22 @@ export function PerformanceCharts({ serverId, maxMemoryMB = 4096, status }) {
 
   
   useEffect(() => {
-    if (!isOnline) return;
+    if (!isOnline || !isConnected) return;
     setData((current) => {
       const now = new Date();
       const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       
-      const newPoint = {
-        time: timeString,
-        cpu: Math.min(100, Number(metrics.cpu.toFixed(1))),
-        ram: Math.min(maxMemoryMB, Math.round(metrics.memory / 1024 / 1024))
-      };
-
-      const newData = [...current, newPoint];
+      const newData = [...current, { 
+        time: timeString, 
+        cpu: metrics.cpu, 
+        ram: Math.round(metrics.memory / (1024 * 1024))
+      }];
       if (newData.length > 20) newData.shift();
       return newData;
     });
-  }, [metrics, isOnline]);
+  }, [metrics, isConnected, isOnline]);
 
-  const currentCpu = data.length > 0 ? data[data.length - 1].cpu : 0;
+  const currentCpu = data.length > 0 ? Math.round(data[data.length - 1].cpu) : 0;
   const currentRam = data.length > 0 ? data[data.length - 1].ram : 0;
   const ramPercentage = Math.round((currentRam / maxMemoryMB) * 100) || 0;
 
@@ -55,7 +55,6 @@ export function PerformanceCharts({ serverId, maxMemoryMB = 4096, status }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6 mb-6">
       
-      {}
       <div className={`bg-surface border-2 ${isCpuHigh ? 'border-red-500 animate-pulse-slow' : 'border-surface-border'} p-6 rounded-blocky shadow-sm flex flex-col gap-4 relative overflow-hidden`}>
         <div className="flex justify-between items-start z-10">
           <div className="flex items-center gap-3">
@@ -63,7 +62,7 @@ export function PerformanceCharts({ serverId, maxMemoryMB = 4096, status }) {
               <Cpu className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="font-bold text-foreground uppercase tracking-wider text-sm">Uso de CPU</h3>
+              <h3 className="font-bold text-foreground uppercase tracking-wider text-sm">{t("cpuLoad")}</h3>
               <div className="flex items-end gap-2">
                 <span className={`text-3xl font-black ${isCpuHigh ? 'text-red-500' : 'text-primary'}`}>
                   {currentCpu}%
@@ -73,7 +72,7 @@ export function PerformanceCharts({ serverId, maxMemoryMB = 4096, status }) {
           </div>
           <div className="text-right">
             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${isConnected ? 'bg-green-500/20 text-green-500' : 'bg-foreground/10 text-foreground/50'}`}>
-              {isConnected ? 'EN VIVO' : 'DESCONECTADO'}
+              {isConnected ? t("statusOnline") : t("statusOffline")}
             </span>
           </div>
         </div>
@@ -105,7 +104,6 @@ export function PerformanceCharts({ serverId, maxMemoryMB = 4096, status }) {
         </div>
       </div>
 
-      {}
       <div className={`bg-surface border-2 ${isRamHigh ? 'border-red-500 animate-pulse-slow' : 'border-surface-border'} p-6 rounded-blocky shadow-sm flex flex-col gap-4 relative overflow-hidden`}>
         <div className="flex justify-between items-start z-10">
           <div className="flex items-center gap-3">
@@ -113,7 +111,7 @@ export function PerformanceCharts({ serverId, maxMemoryMB = 4096, status }) {
               <MemoryStick className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="font-bold text-foreground uppercase tracking-wider text-sm">Uso de RAM</h3>
+              <h3 className="font-bold text-foreground uppercase tracking-wider text-sm">{t("ramUsage")}</h3>
               <div className="flex items-end gap-2">
                 <span className={`text-3xl font-black ${isRamHigh ? 'text-red-500' : 'text-secondary'}`}>
                   {currentRam} <span className="text-lg font-bold text-foreground/50">MB</span>

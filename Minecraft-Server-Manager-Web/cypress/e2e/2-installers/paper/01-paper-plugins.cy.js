@@ -49,7 +49,9 @@ describe("Módulo Paper: Creación y Plugins", () => {
 
     cy.get('[data-cy="wizard-step2-next"]').click({ force: true });
     cy.get('[data-cy="wizard-install-button"]').click();
-    cy.get('[data-cy="server-status-text"]', { timeout: 180000 }).should("contain", "Desconectado");
+    cy.get('[data-cy="server-status-text"]', { timeout: 180000 }).should(($el) => {
+      expect($el.text()).to.match(/Desconectado|Offline|Apagado/i);
+    });
     cy.get('[data-cy="sidebar-plugins"]').click();
     cy.get('[data-cy="modlist-empty-installed"]', { timeout: 10000 }).should("be.visible");
     cy.get('[data-cy="modlist-store-tab"]').click();
