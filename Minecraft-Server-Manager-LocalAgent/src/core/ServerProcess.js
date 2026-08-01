@@ -17,7 +17,8 @@ export default class ServerProcess extends EventEmitter {
     start() {
         this.process = spawn(this.javaExe, this.spawnArgs, {
             cwd: this.dataDir,
-            stdio: ['pipe', 'pipe', 'pipe']
+            stdio: ['pipe', 'pipe', 'pipe'],
+            detached: process.platform !== 'win32'
         });
 
         this.attachOutputListeners();
@@ -106,5 +107,13 @@ export default class ServerProcess extends EventEmitter {
         try {
             this.process.stdin.write(`${command}\n`);
         } catch (e) {}
+    }
+
+    killForcefully() {
+        if (!this.process) return;
+        if (this.metricsInterval) clearInterval(this.metricsInterval);
+        killProcessHard(this.process.pid);
+        this.process = null;
+        this.emit('stopped');
     }
 }
