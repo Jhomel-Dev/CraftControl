@@ -1,3 +1,11 @@
+# [2.12.0](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.11.0...v2.12.0) (2026-08-01)
+
+
+### Features
+
+* **localagent:** add global exception handlers for graceful shutdown ([f9b709d](https://github.com/Jhomel-Dev/Minecraft-server/commit/f9b709d5f9c9856e5b03645f967349cde4cf702a))
+* **localagent:** implement cross-platform process tree killing and port resilience ([3985db5](https://github.com/Jhomel-Dev/Minecraft-server/commit/3985db5f94718bd348316a93571905d1350bfe53))
+
 # [2.11.0](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.10.0...v2.11.0) (2026-08-01)
 
 
