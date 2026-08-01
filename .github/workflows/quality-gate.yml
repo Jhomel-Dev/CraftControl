@@ -51,6 +51,12 @@ jobs:
         with:
           workspaces: ./Minecraft-Server-Manager-AgentGUI/src-tauri -> target
 
+      - name: Prepare Dummy Sidecar for Rust Linter
+        run: |
+          mkdir -p ./Minecraft-Server-Manager-AgentGUI/src-tauri/bin
+          touch ./Minecraft-Server-Manager-AgentGUI/src-tauri/bin/agentcore-x86_64-unknown-linux-gnu
+          touch ./Minecraft-Server-Manager-AgentGUI/src-tauri/bin/agentcore-x86_64-pc-windows-msvc.exe
+
       - name: Lint & Check Rust (AgentGUI)
         working-directory: ./Minecraft-Server-Manager-AgentGUI/src-tauri
         run: |
