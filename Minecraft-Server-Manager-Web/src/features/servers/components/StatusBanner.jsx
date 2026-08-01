@@ -3,33 +3,27 @@ import { useState, useRef, useEffect } from "react";
 import { ChevronDown, ChevronUp, TerminalSquare, ExternalLink } from "lucide-react";
 import { useServerConsole } from "@/features/servers/hooks/useServerConsole";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 export function StatusBanner({ serverId, status }) {
-  const { logs, isConnected } = useServerConsole(serverId);
+  const t = useTranslations("ServerOverview");
+  const { logs } = useServerConsole(serverId);
   const [expanded, setExpanded] = useState(false);
   const router = useRouter();
-  
-  
   const consoleEndRef = useRef(null);
 
   useEffect(() => {
-    if (expanded && consoleEndRef.current) {
-      consoleEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
+    if (!expanded || !consoleEndRef.current) return;
+    consoleEndRef.current.scrollIntoView({ behavior: "smooth" });
   }, [logs, expanded]);
 
-  
   if (status === "OFFLINE" && logs.length === 0) return null;
 
-  const lastLog = logs.length > 0 ? logs[logs.length - 1] : "Esperando conexión...";
-  
-  
+  const lastLog = logs.length > 0 ? logs[logs.length - 1] : t("waitingConnection");
   const cleanLastLog = lastLog.replace(/^\[\d{2}:\d{2}:\d{2}\] /, "");
 
   return (
     <div className="bg-surface border-2 border-surface-border rounded-blocky overflow-hidden shadow-sm transition-all duration-300">
-      
-      {}
       <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-surface-hover/50 transition-colors" onClick={() => setExpanded(!expanded)}>
         <div className="flex items-center gap-3 overflow-hidden flex-1">
           <TerminalSquare className="w-5 h-5 text-secondary flex-shrink-0" />
@@ -41,12 +35,11 @@ export function StatusBanner({ serverId, status }) {
         </div>
         
         <div className="flex items-center gap-2 pl-4 border-l-2 border-surface-border">
-          <span className="text-xs font-bold uppercase tracking-wider text-foreground/50">Console</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-foreground/50">{t("consoleTitle")}</span>
           {expanded ? <ChevronUp className="w-5 h-5 text-foreground/50" /> : <ChevronDown className="w-5 h-5 text-foreground/50" />}
         </div>
       </div>
 
-      {}
       {expanded && (
         <div className="border-t-2 border-surface-border bg-background p-4 animate-in slide-in-from-top-2 flex flex-col gap-2">
           <div className="bg-black/80 rounded-blocky p-4 h-48 overflow-y-auto font-mono text-xs text-green-400 custom-scrollbar shadow-inner relative">
@@ -60,7 +53,7 @@ export function StatusBanner({ serverId, status }) {
               onClick={(e) => { e.stopPropagation(); router.push(`/server/${serverId}/console`); }}
               className="flex items-center gap-2 text-xs font-bold text-secondary hover:text-white transition-colors px-3 py-1 bg-surface rounded-blocky border border-surface-border"
             >
-              Ir a Consola Completa <ExternalLink className="w-3 h-3" />
+              {t("openFullConsole")} <ExternalLink className="w-3 h-3" />
             </button>
           </div>
         </div>
