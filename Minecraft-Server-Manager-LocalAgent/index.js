@@ -54,6 +54,13 @@ const start = async () => {
 
     process.on('SIGINT', shutdownSafely);
     process.on('SIGTERM', shutdownSafely);
+    process.on('uncaughtException', async (err) => {
+      console.error('[CRITICAL] Uncaught Exception:', err);
+      await shutdownSafely();
+    });
+    process.on('unhandledRejection', (reason) => {
+      console.error('[WARN] Unhandled Rejection:', reason);
+    });
     daemon.onShutdown(shutdownSafely);
 
     const apiUrl = EnvManager.getApiUrl();

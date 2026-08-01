@@ -56,21 +56,31 @@ function freeWindowsPort(port) {
     const parts = firstLine.split(/\s+/);
     const pid = parts[parts.length - 1];
 
-    if (!pid || isNaN(parseInt(pid)) || pid === '0') return;
+    if (!pid || isNaN(parseInt(pid, 10)) || pid === '0') return;
 
-    execSync(`taskkill /F /PID ${pid}`, { stdio: 'ignore' });
+    execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'ignore' });
 }
 
 function freeUnixPort(port) {
-    execSync(`fuser -k ${port}/tcp`, { stdio: 'ignore' });
+    try {
+        execSync(`fuser -k -9 ${port}/tcp`, { stdio: 'ignore' });
+    } catch {
+        try {
+            execSync(`lsof -ti :${port} | xargs -r kill -9`, { stdio: 'ignore' });
+        } catch {}
+    }
 }
 
 export function killProcessHard(pid) {
     try {
         if (isWindows) {
-            execSync(`taskkill /F /PID ${pid}`, { stdio: 'ignore' });
+            execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'ignore' });
             return;
         }
-        process.kill(pid, 'SIGKILL');
+        try {
+            process.kill(-pid, 'SIGKILL');
+        } catch {
+            process.kill(pid, 'SIGKILL');
+        }
     } catch (e) { }
 }
