@@ -133,4 +133,9 @@ export default class NativeServerService extends EventEmitter {
         if (!this.process) throw new Error('Server is not running');
         this.process.sendCommand(command);
     }
+
+    killMinecraftServer() {
+        if (!this.process) return;
+        this.process.killForcefully();
+    }
 }

@@ -116,12 +116,28 @@ export default class ServerManagerService {
     }
   }
 
+  killServerForcefully(requestedServerId) {
+    if (!requestedServerId || !/^[a-zA-Z0-9-]+$/.test(requestedServerId)) return;
+    const active = this.activeServers.get(requestedServerId);
+    if (!active) return;
+
+    try {
+      if (active.tunnelService) active.tunnelService.stopTunnel();
+      if (active.nativeServerService) active.nativeServerService.killMinecraftServer();
+      this.connectionService.sendLog({ serverId: requestedServerId, logLine: '[System] Server and Tunnel killed forcefully.' });
+    } catch (e) {} finally {
+      this.connectionService.sendStateUpdate({ serverId: requestedServerId, status: 'OFFLINE' });
+      this.activeServers.delete(requestedServerId);
+    }
+  }
+
   async stopAllServers() {
     for (const active of this.activeServers.values()) {
       try {
         if (active.tunnelService) active.tunnelService.stopTunnel();
-        if (active.nativeServerService) await active.nativeServerService.stopMinecraftServer();
+        if (active.nativeServerService) active.nativeServerService.killMinecraftServer();
       } catch (e) {}
     }
+    this.activeServers.clear();
   }
 }
