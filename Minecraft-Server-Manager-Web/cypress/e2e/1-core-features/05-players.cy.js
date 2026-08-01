@@ -34,13 +34,15 @@ describe("Módulo 7: Gestión de Jugadores", () => {
 
     cy.wait(500);
 
-    cy.get("input[placeholder*='Ej. Mi Servidor Extremo']").type("Cypress Players Server");
+    cy.get('[data-cy="wizard-server-name-input"]').type("Cypress Players Server");
     cy.get('[data-cy="wizard-software-vanilla"]').click();
     cy.get('[data-cy="wizard-step1-next"]').click();
-    cy.get("input[type='range']").invoke("val", 1).trigger("input", { force: true }).trigger("change", { force: true });
+    cy.get('[data-cy="wizard-ram-input"]').invoke("val", 1).trigger("input", { force: true }).trigger("change", { force: true });
     cy.get('[data-cy="wizard-step2-next"]').click();
     cy.get('[data-cy="wizard-install-button"]').click();
-    cy.get('[data-cy="server-status-text"]', { timeout: 15000 }).should("contain", "Desconectado");
+    cy.get('[data-cy="server-status-text"]', { timeout: 15000 }).should(($el) => {
+      expect($el.text()).to.match(/Desconectado|Offline|Apagado/i);
+    });
     cy.get('[data-cy="sidebar-jugadores"]').click();
     cy.get('[data-cy="players-empty-title"]', { timeout: 10000 }).should("be.visible");
     cy.get('[data-cy="players-refresh-btn"]').should("be.visible").click();

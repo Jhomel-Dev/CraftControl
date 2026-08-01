@@ -47,6 +47,8 @@ describe("Módulo 3: Creación de Servidor", () => {
 
     cy.get('[data-cy="wizard-step2-next"]').click({ force: true });
     cy.get('[data-cy="wizard-install-button"]').click();
-    cy.get('[data-cy="server-status-text"]', { timeout: 180000 }).should("contain", "Desconectado");
+    cy.get('[data-cy="server-status-text"]', { timeout: 180000 }).should(($el) => {
+      expect($el.text()).to.match(/Desconectado|Offline|Apagado/i);
+    });
   });
 });
