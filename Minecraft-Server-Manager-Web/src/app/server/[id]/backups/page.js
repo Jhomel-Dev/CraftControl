@@ -5,6 +5,7 @@ import { Save, Trash2, Download, Archive, Globe, Settings, FileJson, Clock, Load
 import { getBackups, createBackup, deleteBackup, fsOperation, downloadBackupZip } from "@/features/servers/services/serverApi";
 import { useRef } from "react";
 import { UploadCloud, Play } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 function Button({ children, variant = "primary", className = "", ...props }) {
   const base = "px-4 py-2 rounded-lg font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed";
@@ -18,6 +19,7 @@ function Button({ children, variant = "primary", className = "", ...props }) {
 }
 
 export default function BackupsPage() {
+  const t = useTranslations("ServerBackups");
   const params = useParams();
   const serverId = params?.id;
   const [backups, setBackups] = useState([]);
@@ -83,9 +85,9 @@ export default function BackupsPage() {
       setCreating(profile);
       await createBackup(serverId, profile);
       await fetchBackups();
-      showToast("Backup creado exitosamente.");
+      showToast(t("createdToast"));
     } catch (err) {
-      showToast("Error al crear backup: " + err.message, "error");
+      showToast(t("createErrorToast") + err.message, "error");
     } finally {
       setCreating(false);
     }
@@ -93,10 +95,10 @@ export default function BackupsPage() {
 
   const handleDownloadBackup = async (fileName) => {
     try {
-      showToast("Iniciando descarga...", "success");
+      showToast(t("downloadingToast"), "success");
       await downloadBackupZip(serverId, fileName);
     } catch (err) {
-      showToast("Error al descargar: " + err.message, "error");
+      showToast(t("downloadErrorToast") + err.message, "error");
     }
   };
 
@@ -105,24 +107,24 @@ export default function BackupsPage() {
       await deleteBackup(serverId, fileName);
       setConfirmDelete(null);
       await fetchBackups();
-      showToast("Backup eliminado correctamente.");
+      showToast(t("deletedToast"));
     } catch (err) {
-      showToast("Error al eliminar: " + err.message, "error");
+      showToast(t("deleteErrorToast") + err.message, "error");
     }
   };
 
   const handleRestoreBackup = async (fileName) => {
     try {
       setConfirmRestore(null);
-      showToast("Restaurando backup, esto puede tardar unos minutos...", "success");
+      showToast(t("restoringToast"), "success");
       await fsOperation(serverId, {
         action: "unzip",
         filePath: `backups/${fileName}`,
         destPath: "."
       });
-      showToast("Backup restaurado correctamente. ¡Reinicia el servidor!", "success");
+      showToast(t("restoredToast"), "success");
     } catch (err) {
-      showToast("Error al restaurar: " + err.message, "error");
+      showToast(t("restoreErrorToast") + err.message, "error");
     }
   };
 
@@ -131,7 +133,7 @@ export default function BackupsPage() {
     if (!file) return;
 
     if (!file.name.endsWith('.zip')) {
-      showToast("El backup debe ser un archivo .zip", "error");
+      showToast(t("notZipToast"), "error");
       return;
     }
 
@@ -149,7 +151,7 @@ export default function BackupsPage() {
       });
 
       for (let i = 0; i < totalChunks; i++) {
-        setUploadProgress(`Subiendo (${i+1}/${totalChunks})...`);
+        setUploadProgress(`${i+1}/${totalChunks}...`);
         const start = i * CHUNK_SIZE;
         const end = Math.min(start + CHUNK_SIZE, file.size);
         const chunk = file.slice(start, end);
@@ -168,11 +170,11 @@ export default function BackupsPage() {
         });
       }
 
-      showToast("Backup subido correctamente.");
+      showToast(t("uploadedToast"));
       fetchBackups();
     } catch (err) {
       console.error("Error subiendo backup:", err);
-      showToast(`Fallo al subir: ${err.message}`, "error");
+      showToast(t("uploadErrorToast") + err.message, "error");
     } finally {
       setUploading(false);
       setUploadProgress("");
@@ -194,9 +196,9 @@ export default function BackupsPage() {
         filePath: "backup-config.json", 
         content: JSON.stringify(config, null, 2) 
       });
-      showToast("¡Configuración guardada correctamente!");
+      showToast(t("savedConfigToast"));
     } catch (e) {
-      showToast("Error guardando ajustes: " + e.message, "error");
+      showToast(t("saveConfigErrorToast") + e.message, "error");
     } finally {
       setSavingSettings(false);
     }
@@ -231,9 +233,9 @@ export default function BackupsPage() {
       <div className="flex flex-col gap-2">
         <h1 className="text-4xl font-black text-foreground uppercase tracking-wider flex items-center gap-3">
           <Archive className="w-8 h-8 text-primary" />
-          Gestor de Backups
+          {t("title")}
         </h1>
-        <p className="text-foreground/70">Protege tu mundo creando copias de seguridad de forma manual o programada.</p>
+        <p className="text-foreground/70">{t("subtitle")}</p>
       </div>
 
       {error && (
@@ -243,12 +245,10 @@ export default function BackupsPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {}
         <div className="lg:col-span-2 flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold flex items-center gap-2">
-              <Save className="w-5 h-5 text-primary" /> Backups Existentes
+              <Save className="w-5 h-5 text-primary" /> {t("existingBackups")}
             </h2>
             <div className="flex gap-2">
               <input 
@@ -260,20 +260,20 @@ export default function BackupsPage() {
                 disabled={uploading}
               />
               <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading || loading} className="h-10 text-sm px-3 border-primary/50 text-primary hover:bg-primary/10">
-                {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> {uploadProgress}</> : <><UploadCloud className="w-4 h-4" /> Importar</>}
+                {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> {uploadProgress}</> : <><UploadCloud className="w-4 h-4" /> {t("importBtn")}</>}
               </Button>
               <Button variant="outline" onClick={fetchBackups} disabled={loading || uploading} className="h-10 text-sm px-3">
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Actualizar
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> {t("refreshBtn")}
               </Button>
             </div>
           </div>
 
           <div className="bg-surface border-2 border-surface-border rounded-blocky overflow-hidden shadow-sm flex flex-col min-h-[300px]">
             <div className="grid grid-cols-12 gap-4 p-4 border-b-2 border-surface-border bg-surface-hover/30 text-xs font-bold text-foreground/50 uppercase tracking-wider">
-              <div className="col-span-5">Archivo</div>
-              <div className="col-span-2">Tamaño</div>
-              <div className="col-span-3">Fecha</div>
-              <div className="col-span-2 text-center">Acciones</div>
+              <div className="col-span-5">{t("fileHeader")}</div>
+              <div className="col-span-2">{t("size")}</div>
+              <div className="col-span-3">{t("dateHeader")}</div>
+              <div className="col-span-2 text-center">{t("actions")}</div>
             </div>
             
             <div className="flex-1 flex flex-col">
@@ -300,8 +300,8 @@ export default function BackupsPage() {
               ) : backups.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-foreground/50 gap-2 opacity-50 p-8 text-center">
                   <Archive className="w-12 h-12 mb-2" />
-                  <p>No tienes ningún backup creado todavía.</p>
-                  <p className="text-sm">Usa los perfiles de la derecha para crear uno nuevo.</p>
+                  <p>{t("emptyTitle")}</p>
+                  <p className="text-sm">{t("emptyDesc")}</p>
                 </div>
               ) : (
                 backups.map((b) => (
@@ -310,7 +310,7 @@ export default function BackupsPage() {
                       <Archive className="w-5 h-5 text-primary opacity-70 shrink-0" />
                       <div className="flex flex-col min-w-0">
                         <span className="font-bold text-sm text-foreground break-all">{b.name}</span>
-                        <span className="text-xs text-foreground/50">{b.name.includes('world') ? 'Perfil: Mundo' : b.name.includes('configs') ? 'Perfil: Configuraciones' : 'Perfil: Completo'}</span>
+                        <span className="text-xs text-foreground/50">{b.name.includes('world') ? t("profileWorld") : b.name.includes('configs') ? t("profileConfigs") : t("profileFull")}</span>
                       </div>
                     </div>
                     <div className="col-span-2 text-sm font-mono">{formatSize(b.size)}</div>
@@ -318,23 +318,23 @@ export default function BackupsPage() {
                     <div className="col-span-2 flex justify-center gap-2">
                       {confirmDelete === b.name ? (
                         <div className="flex items-center gap-1">
-                          <Button variant="danger" className="!p-1 text-xs" onClick={() => handleDeleteBackup(b.name)}>Borrar</Button>
-                          <Button variant="ghost" className="!p-1 text-xs" onClick={() => setConfirmDelete(null)}>No</Button>
+                          <Button variant="danger" className="!p-1 text-xs" onClick={() => handleDeleteBackup(b.name)}>{t("deleteBtn")}</Button>
+                          <Button variant="ghost" className="!p-1 text-xs" onClick={() => setConfirmDelete(null)}>{t("noBtn")}</Button>
                         </div>
                       ) : confirmRestore === b.name ? (
                         <div className="flex items-center gap-1">
-                          <Button className="!p-1 text-xs bg-amber-500 hover:bg-amber-600 text-white" onClick={() => handleRestoreBackup(b.name)}>Restaurar</Button>
-                          <Button variant="ghost" className="!p-1 text-xs" onClick={() => setConfirmRestore(null)}>No</Button>
+                          <Button className="!p-1 text-xs bg-amber-500 hover:bg-amber-600 text-white" onClick={() => handleRestoreBackup(b.name)}>{t("restore")}</Button>
+                          <Button variant="ghost" className="!p-1 text-xs" onClick={() => setConfirmRestore(null)}>{t("noBtn")}</Button>
                         </div>
                       ) : (
                         <>
-                          <Button variant="ghost" className="!p-2 text-amber-500 hover:bg-amber-500/20" onClick={() => setConfirmRestore(b.name)} title="Restaurar (Aplicar)">
+                          <Button variant="ghost" className="!p-2 text-amber-500 hover:bg-amber-500/20" onClick={() => setConfirmRestore(b.name)} title={t("restore")}>
                             <Play className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" className="!p-2 text-primary hover:bg-primary/20" onClick={() => handleDownloadBackup(b.name)} title="Descargar">
+                          <Button variant="ghost" className="!p-2 text-primary hover:bg-primary/20" onClick={() => handleDownloadBackup(b.name)} title={t("download")}>
                             <Download className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" className="!p-2 text-danger hover:bg-danger/20" onClick={() => setConfirmDelete(b.name)} title="Eliminar">
+                          <Button variant="ghost" className="!p-2 text-danger hover:bg-danger/20" onClick={() => setConfirmDelete(b.name)} title={t("delete")}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </>
@@ -349,24 +349,22 @@ export default function BackupsPage() {
 
         {}
         <div className="flex flex-col gap-6">
-          
-          {}
           <div className="bg-surface border-2 border-surface-border rounded-blocky p-6 shadow-sm flex flex-col gap-4">
             <h2 className="text-lg font-bold flex items-center gap-2 mb-2">
-              <Download className="w-5 h-5 text-primary" /> Crear Backup Manual
+              <Download className="w-5 h-5 text-primary" /> {t("manualBackupTitle")}
             </h2>
-            <p className="text-sm text-foreground/70 mb-2">Elige un perfil para comprimir el servidor. Se ejecutará un guardado seguro en caliente.</p>
+            <p className="text-sm text-foreground/70 mb-2">{t("manualBackupDesc")}</p>
             
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold text-foreground/50 uppercase">Perfil a utilizar</label>
+              <label className="text-xs font-bold text-foreground/50 uppercase">{t("selectProfile")}</label>
               <select 
                 value={manualProfile}
                 onChange={(e) => setManualProfile(e.target.value)}
                 className="bg-background border-2 border-surface-border rounded p-2 text-sm font-bold text-foreground focus:outline-none focus:border-primary w-full"
               >
-                <option value="full">Backup Completo</option>
-                <option value="world">Solo Mundo</option>
-                <option value="configs">Solo Plugins y Configs</option>
+                <option value="full">{t("optFull")}</option>
+                <option value="world">{t("optWorld")}</option>
+                <option value="configs">{t("optConfigs")}</option>
               </select>
             </div>
 
@@ -376,18 +374,17 @@ export default function BackupsPage() {
               className="w-full mt-2 h-12"
             >
               {creating !== false ? <Loader2 className="w-5 h-5 animate-spin" /> : <Archive className="w-5 h-5" />}
-              {creating !== false ? 'Comprimiendo...' : 'Crear Backup Ahora'}
+              {creating !== false ? t("creating") : t("createNowBtn")}
             </Button>
           </div>
 
-          {}
           <div className="bg-surface border-2 border-surface-border rounded-blocky p-6 shadow-sm flex flex-col gap-4">
             <h2 className="text-lg font-bold flex items-center gap-2 mb-2 border-b-2 border-surface-border pb-4">
-              <Clock className="w-5 h-5 text-warning" /> Programación Automática
+              <Clock className="w-5 h-5 text-warning" /> {t("scheduleTitle")}
             </h2>
             
             <div className="flex items-center justify-between">
-              <label className="text-sm font-bold cursor-pointer">Activar Backups Diarios</label>
+              <label className="text-sm font-bold cursor-pointer">{t("enableDaily")}</label>
               <div 
                 onClick={() => setScheduleEnabled(!scheduleEnabled)}
                 className={`w-12 h-6 rounded-full p-1 cursor-pointer transition-colors ${scheduleEnabled ? 'bg-green-500' : 'bg-background border-2 border-surface-border'}`}
@@ -398,7 +395,7 @@ export default function BackupsPage() {
 
             <div className={`flex flex-col gap-4 transition-opacity ${!scheduleEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-foreground/50 uppercase">Hora del sistema</label>
+                <label className="text-xs font-bold text-foreground/50 uppercase">{t("systemTime")}</label>
                 <input 
                   type="time" 
                   value={scheduleTime}
@@ -408,20 +405,20 @@ export default function BackupsPage() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-foreground/50 uppercase">Perfil a utilizar</label>
+                <label className="text-xs font-bold text-foreground/50 uppercase">{t("selectProfile")}</label>
                 <select 
                   value={scheduleProfile}
                   onChange={(e) => setScheduleProfile(e.target.value)}
                   className="bg-background border-2 border-surface-border rounded p-2 text-sm font-bold text-foreground focus:outline-none focus:border-primary"
                 >
-                  <option value="full">Backup Completo</option>
-                  <option value="world">Solo Mundo</option>
-                  <option value="configs">Solo Configuraciones</option>
+                  <option value="full">{t("optFull")}</option>
+                  <option value="world">{t("optWorld")}</option>
+                  <option value="configs">{t("optConfigs")}</option>
                 </select>
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-foreground/50 uppercase">Conservar máximos (Historial)</label>
+                <label className="text-xs font-bold text-foreground/50 uppercase">{t("maxRetainedLabel")}</label>
                 <input 
                   type="number" 
                   min="1"
@@ -430,16 +427,15 @@ export default function BackupsPage() {
                   onChange={(e) => setScheduleMax(e.target.value)}
                   className="bg-background border-2 border-surface-border rounded p-2 text-sm font-bold text-foreground focus:outline-none focus:border-primary"
                 />
-                <p className="text-[10px] text-foreground/50 mt-1">Borrará automáticamente los antiguos si excedes el número.</p>
+                <p className="text-[10px] text-foreground/50 mt-1">{t("maxRetainedDesc")}</p>
               </div>
             </div>
 
             <Button onClick={handleSaveSettings} disabled={savingSettings} className="w-full mt-2 h-10">
               <Settings className="w-4 h-4" />
-              Guardar Configuración
+              {t("saveConfigBtn")}
             </Button>
           </div>
-
         </div>
       </div>
     </div>

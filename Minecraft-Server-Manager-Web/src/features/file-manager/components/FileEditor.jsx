@@ -3,8 +3,10 @@ import { ArrowLeft, Save, FileText, Loader2, ShieldAlert, AlertTriangle } from "
 import { Button } from "@/shared/ui/Button";
 import CodeMirror from '@uiw/react-codemirror';
 import { useFileEditor } from "../hooks/useFileEditor";
+import { useTranslations } from "next-intl";
 
 export function FileEditor({ serverId, filePath, onBack }) {
+  const t = useTranslations("ServerFiles");
   const {
     content,
     setContent,
@@ -20,11 +22,11 @@ export function FileEditor({ serverId, filePath, onBack }) {
   } = useFileEditor(serverId, filePath);
 
   if (isBinary) {
-    return <BinaryWarning onBack={onBack} />;
+    return <BinaryWarning onBack={onBack} t={t} />;
   }
 
   if (loading) {
-    return <LoadingState />;
+    return <LoadingState t={t} />;
   }
 
   return (
@@ -43,6 +45,7 @@ export function FileEditor({ serverId, filePath, onBack }) {
             onBack();
           }
         }} 
+        t={t}
       />
 
       <ExitWarning 
@@ -50,9 +53,10 @@ export function FileEditor({ serverId, filePath, onBack }) {
         filePath={filePath} 
         onCancel={() => setShowExitWarning(false)} 
         onConfirm={onBack} 
+        t={t}
       />
 
-      <ErrorBanner errorMsg={errorMsg} />
+      <ErrorBanner errorMsg={errorMsg} t={t} />
 
       <div className="flex-1 bg-background relative min-h-[300px] sm:min-h-[500px] w-full overflow-x-hidden">
         <CodeMirror
@@ -74,7 +78,7 @@ export function FileEditor({ serverId, filePath, onBack }) {
   );
 }
 
-function EditorHeader({ filePath, content, originalContent, saving, errorMsg, onSave, onBack }) {
+function EditorHeader({ filePath, content, originalContent, saving, errorMsg, onSave, onBack, t }) {
   return (
     <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-3 sm:p-4 border-b-2 border-surface-border bg-background/50 gap-3 sm:gap-4 w-full">
       <div className="flex items-center gap-2 sm:gap-3 w-full md:w-auto overflow-hidden">
@@ -85,7 +89,7 @@ function EditorHeader({ filePath, content, originalContent, saving, errorMsg, on
           className="px-2 sm:px-3 shrink-0"
         >
           <ArrowLeft className="w-4 h-4 mr-1 sm:mr-2" />
-          <span className="hidden sm:inline">Volver</span>
+          <span className="hidden sm:inline">{t("back")}</span>
         </Button>
         <div className="h-6 w-px bg-surface-border mx-1 sm:mx-2 hidden sm:block shrink-0"></div>
         <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
@@ -101,29 +105,29 @@ function EditorHeader({ filePath, content, originalContent, saving, errorMsg, on
         className="font-bold w-full md:w-auto shrink-0"
       >
         {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-        Guardar
+        {t("save")}
       </Button>
     </div>
   );
 }
 
-function ExitWarning({ show, filePath, onCancel, onConfirm }) {
+function ExitWarning({ show, filePath, onCancel, onConfirm, t }) {
   if (!show) return null;
 
   return (
     <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 sm:p-6 animate-in fade-in">
       <div className="bg-surface border-2 border-surface-border p-4 sm:p-6 rounded-blocky shadow-lg max-w-sm w-full text-center">
         <AlertTriangle className="w-10 h-10 sm:w-12 sm:h-12 text-warning mx-auto mb-4" />
-        <h3 className="text-lg sm:text-xl font-bold mb-2">¿Salir sin guardar?</h3>
+        <h3 className="text-lg sm:text-xl font-bold mb-2">{t("exitWithoutSaving")}</h3>
         <p className="text-foreground/70 text-xs sm:text-sm font-semibold mb-6">
-          Tienes cambios pendientes en <span className="font-mono text-foreground truncate block max-w-full">{filePath}</span> que se perderán.
+          {t("unsavedChangesDesc")} <span className="font-mono text-foreground truncate block max-w-full">{filePath}</span>
         </p>
         <div className="flex flex-col gap-2 sm:gap-3">
           <Button onClick={onCancel} className="w-full font-bold">
-            Seguir Editando
+            {t("keepEditing")}
           </Button>
           <Button variant="outline" onClick={onConfirm} className="w-full border-danger/20 text-danger hover:bg-danger/10 font-bold">
-            Salir y Perder Cambios
+            {t("discardAndExit")}
           </Button>
         </div>
       </div>
@@ -131,44 +135,44 @@ function ExitWarning({ show, filePath, onCancel, onConfirm }) {
   );
 }
 
-function ErrorBanner({ errorMsg }) {
+function ErrorBanner({ errorMsg, t }) {
   if (!errorMsg) return null;
 
   return (
     <div className="bg-danger/10 border-b-2 border-danger p-2 sm:p-3 flex items-start gap-2 sm:gap-3 animate-in slide-in-from-top-1 w-full overflow-hidden">
       <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-danger shrink-0 mt-0.5" />
       <div className="flex-1 overflow-hidden min-w-0">
-        <p className="text-danger font-bold text-xs sm:text-sm truncate">Error de Sintaxis Detectado</p>
+        <p className="text-danger font-bold text-xs sm:text-sm truncate">{t("syntaxErrorTitle")}</p>
         <p className="text-danger/80 text-[10px] sm:text-xs font-mono truncate">{errorMsg}</p>
       </div>
     </div>
   );
 }
 
-function BinaryWarning({ onBack }) {
+function BinaryWarning({ onBack, t }) {
   return (
     <div className="flex flex-col h-[70vh] sm:h-full bg-surface border-2 border-surface-border rounded-blocky shadow-sm overflow-hidden animate-in fade-in w-full">
       <div className="flex items-center justify-between p-3 sm:p-4 border-b-2 border-surface-border bg-background/50">
         <Button variant="outline" size="sm" onClick={onBack}>
-          <ArrowLeft className="w-4 h-4 mr-2" /> Volver
+          <ArrowLeft className="w-4 h-4 mr-2" /> {t("back")}
         </Button>
       </div>
       <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 text-center w-full">
         <ShieldAlert className="w-16 h-16 sm:w-20 sm:h-20 text-danger mb-4 opacity-80" />
-        <h2 className="text-2xl sm:text-3xl font-black mb-2">Acceso Denegado</h2>
+        <h2 className="text-2xl sm:text-3xl font-black mb-2">{t("binaryDeniedTitle")}</h2>
         <p className="text-foreground/70 text-sm sm:text-base font-semibold max-w-md mx-auto">
-          Los archivos binarios (.jar, .dat, .mca) y los ejecutables no pueden ser modificados manualmente por seguridad.
+          {t("binaryDeniedDesc")}
         </p>
       </div>
     </div>
   );
 }
 
-function LoadingState() {
+function LoadingState({ t }) {
   return (
     <div className="flex flex-col items-center justify-center p-8 sm:p-12 h-48 sm:h-64 bg-surface border-2 border-surface-border rounded-blocky shadow-sm w-full">
       <Loader2 className="w-8 h-8 sm:w-10 sm:h-10 animate-spin text-primary mb-4" />
-      <p data-cy="file-editor-loading-text" className="text-foreground/70 font-bold text-sm sm:text-base">Leyendo archivo...</p>
+      <p data-cy="file-editor-loading-text" className="text-foreground/70 font-bold text-sm sm:text-base">{t("readingFile")}</p>
     </div>
   );
 }
