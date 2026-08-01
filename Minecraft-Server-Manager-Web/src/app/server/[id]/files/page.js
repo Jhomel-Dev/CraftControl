@@ -8,10 +8,12 @@ import { fsOperation } from "@/features/servers/services/serverApi";
 import { useToast } from "@/shared/ui/ToastProvider";
 import { Button } from "@/shared/ui/Button";
 import { useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 
 const CHUNK_SIZE = 1024 * 1024 * 5; 
 
 export default function FilesPage({ params }) {
+  const t = useTranslations("ServerFiles");
   const unwrappedParams = use(params);
   const serverId = unwrappedParams.id;
   const [currentPath, setCurrentPath] = useState("");
@@ -71,11 +73,11 @@ export default function FilesPage({ params }) {
       setIsDeleting(true);
       const targetPath = currentPath ? `${currentPath}/${fileName}` : fileName;
       await fsOperation(serverId, { action: "delete", filePath: targetPath });
-      toast(`Archivo eliminado: ${fileName}`, "success");
+      toast(`${t("fileDeletedToast")}${fileName}`, "success");
       setDeletingFile(null);
       loadFiles();
     } catch (err) {
-      toast(`Error al eliminar: ${err.message}`, "error");
+      toast(`${t("deleteErrorToast")}${err.message}`, "error");
     } finally {
       setIsDeleting(false);
     }
@@ -162,12 +164,12 @@ export default function FilesPage({ params }) {
       }
 
       if (successCount > 0) {
-        toast(`${successCount} archivo(s) subido(s) correctamente.`, "success");
+        toast(`${successCount} ${t("uploadSuccessToast")}`, "success");
         loadFiles();
       }
     } catch (err) {
       console.error("Error subiendo archivos:", err);
-      toast(`Fallo al subir: ${err.message}`, "error");
+      toast(`${t("uploadErrorToast")}${err.message}`, "error");
     } finally {
       setUploading(false);
       setUploadingText("");
@@ -189,8 +191,8 @@ export default function FilesPage({ params }) {
           onDragOver={handleDragOver}
         >
           <Upload className="w-16 h-16 text-primary mb-4 animate-bounce" />
-          <h2 className="text-3xl font-black text-primary mb-2">Suelta tus archivos aquí</h2>
-          <p className="text-foreground/70 font-bold text-lg">Se subirán a <span className="text-foreground font-mono bg-surface-border px-2 py-1 rounded">{currentPath || "/"}</span></p>
+          <h2 className="text-3xl font-black text-primary mb-2">{t("dropTitle")}</h2>
+          <p className="text-foreground/70 font-bold text-lg">{t("dropSubtitle")}<span className="text-foreground font-mono bg-surface-border px-2 py-1 rounded">{currentPath || "/"}</span></p>
         </div>
       )}
       <div className="flex items-center justify-between bg-surface p-6 rounded-blocky border-2 border-surface-border shadow-sm">
@@ -199,7 +201,7 @@ export default function FilesPage({ params }) {
             <FolderOpen className="w-8 h-8" />
           </div>
           <div>
-            <h1 className="text-3xl font-black">Explorador de Archivos</h1>
+            <h1 className="text-3xl font-black">{t("explorerTitle")}</h1>
             <p className="text-foreground/70 font-semibold">{serverId}</p>
           </div>
         </div>
@@ -215,10 +217,10 @@ export default function FilesPage({ params }) {
             />
             <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
               {uploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
-              {uploading ? uploadingText || "Subiendo..." : "Subir Archivo"}
+              {uploading ? uploadingText || t("uploadingBtn") : t("uploadFileBtn")}
             </Button>
             <Button onClick={() => setShowCreateFile(true)} disabled={uploading}>
-              Nuevo Archivo
+              {t("newFileBtn")}
             </Button>
           </div>
         )}
@@ -228,9 +230,9 @@ export default function FilesPage({ params }) {
         <div className="bg-warning/10 border-2 border-warning/20 p-4 rounded-blocky flex items-start gap-4 animate-in slide-in-from-top-2">
           <AlertTriangle className="w-6 h-6 text-warning shrink-0 mt-0.5" />
           <div>
-            <h2 className="text-warning font-bold text-lg mb-1">Precaución al modificar archivos</h2>
+            <h2 className="text-warning font-bold text-lg mb-1">{t("cautionTitle")}</h2>
             <p className="text-foreground/80 font-semibold text-sm leading-relaxed max-w-4xl">
-              Estás accediendo a la estructura raíz del servidor. Modificar, renombrar o eliminar archivos críticos de forma incorrecta puede <strong>corromper los mundos</strong>, desconfigurar plugins, o impedir que el servidor inicie. Si no estás seguro de lo que hace un archivo, es mejor no tocarlo.
+              {t("cautionDesc")}
             </p>
           </div>
         </div>
@@ -240,15 +242,15 @@ export default function FilesPage({ params }) {
         <div className="bg-surface p-4 border-2 border-surface-border rounded-blocky shadow-sm animate-in fade-in flex gap-2">
           <input 
             type="text"
-            placeholder="ej. config.yml"
+            placeholder={t("fileNamePlaceholder")}
             className="flex-1 bg-background border-2 border-surface-border rounded-blocky px-4 py-2 font-bold focus:outline-none focus:border-primary transition-colors"
             value={newFileName}
             onChange={(e) => setNewFileName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleCreateFileSubmit()}
             autoFocus
           />
-          <Button onClick={handleCreateFileSubmit} disabled={!newFileName.trim()}>Crear</Button>
-          <Button variant="outline" onClick={() => { setShowCreateFile(false); setNewFileName(""); }}>Cancelar</Button>
+          <Button onClick={handleCreateFileSubmit} disabled={!newFileName.trim()}>{t("create")}</Button>
+          <Button variant="outline" onClick={() => { setShowCreateFile(false); setNewFileName(""); }}>{t("cancel")}</Button>
         </div>
       )}
 

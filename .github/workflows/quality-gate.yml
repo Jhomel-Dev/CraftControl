@@ -35,3 +35,32 @@ jobs:
           npm ci || npm install
           npm run lint --if-present
           npm run test --if-present
+
+      - name: Install System Dependencies for Tauri
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ./Minecraft-Server-Manager-AgentGUI/src-tauri -> target
+
+      - name: Prepare Dummy Sidecar for Rust Linter
+        run: |
+          mkdir -p ./Minecraft-Server-Manager-AgentGUI/src-tauri/bin
+          touch ./Minecraft-Server-Manager-AgentGUI/src-tauri/bin/agentcore-x86_64-unknown-linux-gnu
+          touch ./Minecraft-Server-Manager-AgentGUI/src-tauri/bin/agentcore-x86_64-pc-windows-msvc.exe
+
+      - name: Lint & Check Rust (AgentGUI)
+        working-directory: ./Minecraft-Server-Manager-AgentGUI/src-tauri
+        run: |
+          cargo fmt -- --check
+          cargo clippy -- -D warnings
+          cargo check
+

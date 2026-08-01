@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tauri::AppHandle;
 use tauri::Manager;
 
@@ -38,8 +38,17 @@ fn get_agent_config_dirs(app_handle: Option<&AppHandle>) -> Vec<PathBuf> {
 
     if let Ok(home) = std::env::var("HOME") {
         let home_path = PathBuf::from(home);
-        dirs.push(home_path.join(".config").join("minecraft-server-manager-agent"));
-        dirs.push(home_path.join("Library").join("Application Support").join("minecraft-server-manager-agent"));
+        dirs.push(
+            home_path
+                .join(".config")
+                .join("minecraft-server-manager-agent"),
+        );
+        dirs.push(
+            home_path
+                .join("Library")
+                .join("Application Support")
+                .join("minecraft-server-manager-agent"),
+        );
     }
 
     if let Ok(appdata) = std::env::var("APPDATA") {
@@ -49,7 +58,7 @@ fn get_agent_config_dirs(app_handle: Option<&AppHandle>) -> Vec<PathBuf> {
     dirs
 }
 
-fn read_port_from_lockfile(app_data: &PathBuf) -> Option<u16> {
+fn read_port_from_lockfile(app_data: &Path) -> Option<u16> {
     let lock_path = app_data.join("daemon.lock");
     let content = fs::read_to_string(lock_path).ok()?;
     let json: serde_json::Value = serde_json::from_str(&content).ok()?;
@@ -57,7 +66,7 @@ fn read_port_from_lockfile(app_data: &PathBuf) -> Option<u16> {
     u16::try_from(port_val).ok()
 }
 
-fn read_port_from_env_file(app_data: &PathBuf) -> Option<u16> {
+fn read_port_from_env_file(app_data: &Path) -> Option<u16> {
     let env_path = app_data.join(".env");
     let content = fs::read_to_string(env_path).ok()?;
     for line in content.lines() {
