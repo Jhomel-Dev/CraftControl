@@ -1,3 +1,11 @@
+# [2.11.0](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.10.0...v2.11.0) (2026-08-01)
+
+
+### Features
+
+* **web:** add i18n to profile and replace mock data with real auth and server stores ([840a33c](https://github.com/Jhomel-Dev/Minecraft-server/commit/840a33c767ce7a784240785df47e9ee4bb6171be))
+* **web:** integrate i18n translations for server files, backups, and network pages ([4a78b13](https://github.com/Jhomel-Dev/Minecraft-server/commit/4a78b13c7c8f10f35c6d8fd4b4febf17e282377b))
+
 # [2.10.0](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.9.1...v2.10.0) (2026-07-27)
 
 
