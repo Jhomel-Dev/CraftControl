@@ -67,4 +67,19 @@ describe('SmartBootService Integration Tests', () => {
     await new Promise(resolve => testServer.close(resolve));
     imposterProcess.kill('SIGKILL');
   }, 15000);
+
+  it('Debe ignorar herramientas de desarrollo y consolas al analizar la lista de procesos', () => {
+    const psOutput = `
+1000 concurrently "npm run dev:api" "npm run dev:web"
+1001 sh -c cd Minecraft-Server-Manager-LocalAgent && npm start
+1002 nodemon index.js --watch minecraft-server-manager-localagent
+1003 /usr/bin/code --vscode-ipc minecraft-server-manager-localagent
+1004 node --test vitest minecraft-server-manager-localagent
+2000 node index.js --title craftcontrol-daemon
+2001 /usr/bin/node /opt/agentcore/index.js
+    `;
+    const pids = SmartBootService._parsePidsFromPsOutput(psOutput);
+    expect(pids).toEqual([2000, 2001]);
+  });
 });
+
