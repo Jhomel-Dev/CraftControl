@@ -1,0 +1,14 @@
+{
+  "watch": ["src", "index.js"],
+  "ext": "js,json",
+  "ignore": [
+    "*.env*",
+    "*.lock",
+    "*.log",
+    "logs/*",
+    "vault/*",
+    "servers/*",
+    "node_modules/*",
+    "tests/*"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "watch": ["src"],
+  "ext": "js,json",
+  "ignore": [
+    "*.env*",
+    "*.lock",
+    "*.log",
+    "logs/*",
+    "prisma/*",
+    "node_modules/*",
+    "tests/*"
+  ]
+}
