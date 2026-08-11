@@ -67,8 +67,6 @@ const start = async () => {
     console.log(`\n[System] El agente está configurado para conectarse a: ${apiUrl}`);
     const isSetupMode = process.argv.includes('--setup');
     let agentToken = EnvManager.getAgentToken();
-    console.log(`[DEBUG] Loaded agentToken from EnvManager: type=${typeof agentToken}, value='${agentToken}'`);
-
     daemon.onUnlink(async () => {
       console.log('\n[System] Desvinculación solicitada vía Local API.');
       try {
