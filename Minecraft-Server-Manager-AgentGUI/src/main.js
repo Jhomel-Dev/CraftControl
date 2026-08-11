@@ -1,6 +1,14 @@
 const { listen } = window.__TAURI__.event;
 const { invoke } = window.__TAURI__.core;
 
+const originalFetch = window.fetch;
+window.fetch = async (url, options = {}) => {
+  const secret = await invoke('get_daemon_secret').catch(() => '');
+  const headers = { ...options.headers };
+  if (secret) headers['Authorization'] = `Bearer ${secret}`;
+  return originalFetch(url, { ...options, headers });
+};
+
 const views = {
   loading: document.getElementById('view-loading'),
   pin: document.getElementById('view-pin'),
