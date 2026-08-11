@@ -100,9 +100,12 @@ async fn poll_agent_status(app_handle: &AppHandle, client: &reqwest::Client) -> 
     let status_url = format!("{}/status", base_url);
     let secret = crate::config::read_daemon_secret(Some(app_handle)).unwrap_or_default();
 
-    let Ok(res) = client.get(&status_url)
+    let Ok(res) = client
+        .get(&status_url)
         .header("Authorization", format!("Bearer {}", secret))
-        .send().await else {
+        .send()
+        .await
+    else {
         let _ = app_handle.emit("agent-state-changed", r#"{"status":"offline"}"#);
         return false;
     };
@@ -122,7 +125,7 @@ async fn poll_agent_status(app_handle: &AppHandle, client: &reqwest::Client) -> 
     } else {
         json_val["pin"] = serde_json::Value::Null;
     }
-    
+
     let modified_json = json_val.to_string();
     let _ = app_handle.emit("agent-state-changed", &modified_json);
     true
@@ -134,18 +137,33 @@ pub async fn graceful_shutdown(app_handle: &AppHandle) {
         .timeout(Duration::from_secs(2))
         .build()
         .unwrap_or_default();
+<<<<<<< HEAD
     
     let secret = crate::config::read_daemon_secret(Some(app_handle)).unwrap_or_default();
     let res = client.post(format!("{}/shutdown", base_url))
         .header("Authorization", format!("Bearer {}", secret))
         .send().await;
         
+=======
+
+    let secret = crate::config::read_daemon_secret(Some(app_handle)).unwrap_or_default();
+    let res = client
+        .post(format!("{}/shutdown", base_url))
+        .header("Authorization", format!("Bearer {}", secret))
+        .send()
+        .await;
+
+>>>>>>> 16b6f38 (feat(agentgui): integrate secure daemon lockfile authentication)
     if let Ok(response) = res {
         if !response.status().is_success() {
             return;
         }
     }
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> 16b6f38 (feat(agentgui): integrate secure daemon lockfile authentication)
     tokio::time::sleep(Duration::from_millis(300)).await;
     crate::config::remove_daemon_lockfiles(Some(app_handle));
 }
