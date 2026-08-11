@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import crypto from 'crypto';
 
 const getAppDataPath = () => {
   if (process.env.APPDATA) {
@@ -25,6 +26,15 @@ const LOCK_PATH = path.join(appDataDir, 'daemon.lock');
 
 export default class EnvManager {
   static ENV_PATH = ENV_PATH;
+
+  static getDaemonSecret() {
+    if (!process.env.DAEMON_SECRET) {
+      const secret = crypto.randomBytes(32).toString('hex');
+      this._updateEnvVar('DAEMON_SECRET', secret);
+      process.env.DAEMON_SECRET = secret;
+    }
+    return process.env.DAEMON_SECRET;
+  }
 
   static getLockfilePath() {
     return LOCK_PATH;
@@ -56,9 +66,21 @@ export default class EnvManager {
     const data = {
       pid: process.pid,
       port: Number(port),
+      secret: this.getDaemonSecret(),
+      pin: global.currentPairingPin || null,
       timestamp: Date.now()
     };
-    fs.writeFileSync(LOCK_PATH, JSON.stringify(data, null, 2), 'utf8');
+    fs.writeFileSync(LOCK_PATH, JSON.stringify(data, null, 2), { encoding: 'utf8', mode: 0o600 });
+  }
+
+  static updateDaemonLockPin(pin) {
+    if (fs.existsSync(LOCK_PATH)) {
+      try {
+        const data = JSON.parse(fs.readFileSync(LOCK_PATH, 'utf8'));
+        data.pin = pin;
+        fs.writeFileSync(LOCK_PATH, JSON.stringify(data, null, 2), { encoding: 'utf8', mode: 0o600 });
+      } catch (e) {}
+    }
   }
 
   static deleteDaemonLock() {

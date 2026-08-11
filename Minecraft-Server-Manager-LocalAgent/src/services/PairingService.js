@@ -1,4 +1,5 @@
 import { io } from 'socket.io-client';
+import EnvManager from '../config/EnvManager.js';
 
 export default class PairingService {
   static async performDeviceFlow(apiUrl) {
@@ -13,10 +14,12 @@ export default class PairingService {
     console.error(`Waiting for cloud confirmation...\n`);
 
     global.currentPairingPin = pin;
+    EnvManager.updateDaemonLockPin(pin);
 
     const finalToken = await this._waitForSocketPairing(apiUrl, pin);
     
     global.currentPairingPin = null;
+    EnvManager.updateDaemonLockPin(null);
     console.error('Pairing Successful! Saving credentials...');
     return finalToken;
   }

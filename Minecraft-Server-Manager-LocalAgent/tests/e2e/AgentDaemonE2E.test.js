@@ -12,6 +12,7 @@ describe('LocalDaemonController E2E API Tests', () => {
     vi.spyOn(EnvManager, 'writeDaemonLock').mockImplementation(() => {});
     vi.spyOn(EnvManager, 'deleteDaemonLock').mockImplementation(() => {});
     vi.spyOn(EnvManager, 'updateApiUrl').mockImplementation(() => {});
+    vi.spyOn(EnvManager, 'getDaemonSecret').mockReturnValue('test-secret');
   });
 
   afterEach(async () => {
@@ -31,7 +32,9 @@ describe('LocalDaemonController E2E API Tests', () => {
     expect(identityRes.status).toBe(200);
     expect(identityData.identity).toBe('CraftControlAgent');
 
-    const statusRes = await fetch(`http://127.0.0.1:${daemon.port}/status`);
+    const statusRes = await fetch(`http://127.0.0.1:${daemon.port}/status`, {
+      headers: { 'Authorization': 'Bearer test-secret' }
+    });
     const statusData = await statusRes.json();
 
     expect(statusRes.status).toBe(200);
@@ -44,7 +47,10 @@ describe('LocalDaemonController E2E API Tests', () => {
 
     const setApiRes = await fetch(`http://127.0.0.1:${daemon.port}/set-api`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer test-secret' 
+      },
       body: JSON.stringify({ apiUrl: 'http://test-api.localhost' })
     });
     const setApiData = await setApiRes.json();
@@ -56,7 +62,8 @@ describe('LocalDaemonController E2E API Tests', () => {
     daemon.onShutdown(shutdownCallback);
 
     const shutdownRes = await fetch(`http://127.0.0.1:${daemon.port}/shutdown`, {
-      method: 'POST'
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer test-secret' }
     });
     const shutdownData = await shutdownRes.json();
 
