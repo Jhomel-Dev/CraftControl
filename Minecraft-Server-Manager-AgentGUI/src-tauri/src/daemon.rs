@@ -89,7 +89,7 @@ async fn get_kill_switch_notes(app_handle: &AppHandle) -> Option<String> {
     let res = client.get(api_url).send().await.ok()?;
     let json = res.json::<serde_json::Value>().await.ok()?;
     let minimum = json["minimum"].as_str()?;
-    
+
     let current = app_handle.package_info().version.to_string();
     let cur_ver = semver::Version::parse(&current).ok()?;
     let min_ver = semver::Version::parse(minimum).ok()?;
@@ -98,7 +98,12 @@ async fn get_kill_switch_notes(app_handle: &AppHandle) -> Option<String> {
         return None;
     }
 
-    Some(json["notes"].as_str().unwrap_or("Actualización obligatoria").to_string())
+    Some(
+        json["notes"]
+            .as_str()
+            .unwrap_or("Actualización obligatoria")
+            .to_string(),
+    )
 }
 
 pub async fn check_update_and_spawn(app_handle: &AppHandle) {
@@ -156,7 +161,7 @@ pub fn start_agent_polling_loop(app_handle: AppHandle) {
             }
 
             consecutive_failures += 1;
-            
+
             if consecutive_failures % 3 == 1 {
                 check_update_and_spawn(&app_handle).await;
             }
