@@ -62,7 +62,8 @@ export default function BackupsPage() {
     try {
       const res = await fsOperation(serverId, { action: "read", filePath: "backup-config.json" });
       if (res && res.content) {
-        const conf = JSON.parse(res.content);
+        let conf = {};
+        try { conf = JSON.parse(res.content); } catch(e) {}
         setScheduleEnabled(conf.enabled || false);
         setScheduleTime(conf.time || "03:00");
         setScheduleProfile(conf.profile || "full");
@@ -134,6 +135,15 @@ export default function BackupsPage() {
 
     if (!file.name.endsWith('.zip')) {
       showToast(t("notZipToast"), "error");
+      return;
+    }
+
+    if (file.name.includes('..') || file.name.includes('/')) {
+      showToast(`${file.name} tiene un nombre inválido.`, "error");
+      return;
+    }
+    if (file.size > 2000 * 1024 * 1024) { 
+      showToast(`${file.name} excede el límite de 2GB.`, "error");
       return;
     }
 
