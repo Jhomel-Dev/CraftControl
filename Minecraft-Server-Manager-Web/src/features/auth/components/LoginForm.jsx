@@ -59,10 +59,10 @@ export function LoginForm() {
 
   return (
 
-      <div className="bg-surface border-2 border-surface-border p-8 rounded-blocky shadow-xl max-w-md w-full flex flex-col gap-6 z-10">
+      <div suppressHydrationWarning className="bg-surface border-2 border-surface-border p-8 rounded-blocky shadow-xl max-w-md w-full flex flex-col gap-6 z-10">
         
-        <div className="flex flex-col items-center text-center gap-2">
-          <div className="p-3 bg-background rounded-blocky border-2 border-surface-border mb-2">
+        <div suppressHydrationWarning className="flex flex-col items-center text-center gap-2">
+          <div suppressHydrationWarning className="p-3 bg-background rounded-blocky border-2 border-surface-border mb-2">
             <Pickaxe className="w-8 h-8 text-primary" />
           </div>
           <h1 className="text-3xl font-black text-foreground">{t("welcomeBack")}</h1>
@@ -70,7 +70,7 @@ export function LoginForm() {
         </div>
 
         {error && (
-          <div className="bg-danger/10 border-2 border-danger text-danger p-3 rounded-blocky text-sm font-semibold text-center">
+          <div suppressHydrationWarning className="bg-danger/10 border-2 border-danger text-danger p-3 rounded-blocky text-sm font-semibold text-center">
             {error}
           </div>
         )}
@@ -97,13 +97,13 @@ export function LoginForm() {
           </Button>
         </form>
 
-        <div className="flex items-center gap-4">
-          <div className="h-0.5 bg-surface-border flex-1" />
+        <div suppressHydrationWarning className="flex items-center gap-4">
+          <div suppressHydrationWarning className="h-0.5 bg-surface-border flex-1" />
           <span className="text-surface-border font-bold text-sm">{t("orLoginWith")}</span>
-          <div className="h-0.5 bg-surface-border flex-1" />
+          <div suppressHydrationWarning className="h-0.5 bg-surface-border flex-1" />
         </div>
 
-        <div className="flex justify-center">
+        <div suppressHydrationWarning className="flex justify-center">
           <Button 
             type="button"
             variant="outline"
