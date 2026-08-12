@@ -1,6 +1,6 @@
 {
   "productName": "CraftControl-Agent",
-  "version": "2.12.0",
+  "version": "2.13.0",
   "identifier": "com.craftcontrol.agent",
   "build": {
     "frontendDist": "../src"

@@ -1,3 +1,36 @@
+# [2.13.0](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.12.0...v2.13.0) (2026-08-12)
+
+
+### Bug Fixes
+
+* **agent): migrate execSync to spawnSync in Forge and NeoForge; fix(web:** prevent memory leak in E2E tests by using SIGKILL ([8623d3b](https://github.com/Jhomel-Dev/Minecraft-server/commit/8623d3bab2988ed03b107ed17505b977a077f0b9))
+* **api:** implement server settings validation and execution fixes ([54f1250](https://github.com/Jhomel-Dev/Minecraft-server/commit/54f125021bdcf1b987ba79d9b783dab0dd1969dd))
+* **api:** remove verifyToken from logout to ensure cookie clearance on expired access tokens ([40a770e](https://github.com/Jhomel-Dev/Minecraft-server/commit/40a770eec1dac548ebadd61ae424d92a379fb9c9))
+* **api:** secure agent controller and gateway logic ([575f54e](https://github.com/Jhomel-Dev/Minecraft-server/commit/575f54e89101b38c54a25728a2d2bc5fee5aa1c3))
+* **api:** secure auth module and configure global rate limiters ([d309612](https://github.com/Jhomel-Dev/Minecraft-server/commit/d309612b6a76be83076707d65caa8ee656d71a70))
+* **ci:** add JWT_REFRESH_SECRET to e2e-tests workflow to fix failing tests ([7f5577e](https://github.com/Jhomel-Dev/Minecraft-server/commit/7f5577e54726ec7fd0af3d9e57fce8dcb0748c1a))
+* **gui:** improve daemon respawn logic, check PID, and log spawn errors ([7e74afa](https://github.com/Jhomel-Dev/Minecraft-server/commit/7e74afafff3f4fffbb78f877fe0f354fb1290f0b))
+* **gui:** remove debug globals and enforce strict CSP policy ([12e423e](https://github.com/Jhomel-Dev/Minecraft-server/commit/12e423eaaddadb3dcaf1b01eb0cca6d837eab1a8))
+* **gui:** verify HTTP status in request_unlink ([2de9f64](https://github.com/Jhomel-Dev/Minecraft-server/commit/2de9f6490d5e97610e42763e31a69d6e03eb2f51))
+* **localagent): port hotfix to ignore dev tools in SmartBootService; feat(api:** add tar.gz backup support and robust validation ([8bfecc9](https://github.com/Jhomel-Dev/Minecraft-server/commit/8bfecc920062176568f14c6e1ac0b359493a61b5))
+* **localagent:** fix FabricInstaller command injection ([5021be6](https://github.com/Jhomel-Dev/Minecraft-server/commit/5021be67b03774a97bc8e6a07faad43309c60373))
+* **localagent:** fix JVM memory arguments overwriting logic ([fd2b367](https://github.com/Jhomel-Dev/Minecraft-server/commit/fd2b367142c211e9b4a162a9b597c761e5ebec6f))
+* **localagent:** improve BackupService security and performance ([58cc9aa](https://github.com/Jhomel-Dev/Minecraft-server/commit/58cc9aa77941bef54ca982581488c5c76856bc9c))
+* **localagent:** remove sensitive agent token logging ([f3020e5](https://github.com/Jhomel-Dev/Minecraft-server/commit/f3020e592788b603553177faa0247e3fcc4679af))
+* resolve remaining merge conflicts in daemon.rs ([859eefa](https://github.com/Jhomel-Dev/Minecraft-server/commit/859eefa1b30dc8e590509dbd8cf4fe0e1da1088e))
+* **web:** add size limit and prevent path traversal in file uploads ([0d545ba](https://github.com/Jhomel-Dev/Minecraft-server/commit/0d545ba5feb4f9b1ed27f03b0fd6fc4f954718db))
+* **web:** add try-catch to JSON parsing, fix RAM format, remove dead code ([1d5470e](https://github.com/Jhomel-Dev/Minecraft-server/commit/1d5470edf4302dc6a491fe459602da7641dfd63a))
+* **web:** fix session refresh hang and aggressive polling ([27437c0](https://github.com/Jhomel-Dev/Minecraft-server/commit/27437c0bfbac05a210a84086b6fc028fab31a5ca))
+* **web:** invalidate server-side session on logout ([521dbdf](https://github.com/Jhomel-Dev/Minecraft-server/commit/521dbdfefd76dbdcdc5a3625c1ef632f2eca5b4c))
+* **web:** prevent proxy SSRF vulnerability via URL allowlist ([baf0a21](https://github.com/Jhomel-Dev/Minecraft-server/commit/baf0a214e6cfbee9130fea1409721c8c934052d5))
+
+
+### Features
+
+* **agentgui:** integrate secure daemon lockfile authentication ([558965d](https://github.com/Jhomel-Dev/Minecraft-server/commit/558965dde7378fa78735e75fcb299ebc375c00df))
+* **agentgui:** integrate secure daemon lockfile authentication ([11d02f3](https://github.com/Jhomel-Dev/Minecraft-server/commit/11d02f359696ba339cbc036233c949685ab80bef))
+* **localagent:** implement secure LocalDaemonController authentication ([3f0dcc2](https://github.com/Jhomel-Dev/Minecraft-server/commit/3f0dcc22e6df84383aebdadcede63eafdf58d3fe))
+
 # [2.12.0](https://github.com/Jhomel-Dev/Minecraft-server/compare/v2.11.0...v2.12.0) (2026-08-01)
 
 
