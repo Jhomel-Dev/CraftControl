@@ -38,21 +38,17 @@ fn get_agent_config_dirs(app_handle: Option<&AppHandle>) -> Vec<PathBuf> {
 
     if let Ok(home) = std::env::var("HOME") {
         let home_path = PathBuf::from(home);
-        dirs.push(
-            home_path
-                .join(".config")
-                .join("minecraft-server-manager-agent"),
-        );
+        dirs.push(home_path.join(".config").join("com.craftcontrol.agent"));
         dirs.push(
             home_path
                 .join("Library")
                 .join("Application Support")
-                .join("minecraft-server-manager-agent"),
+                .join("com.craftcontrol.agent"),
         );
     }
 
     if let Ok(appdata) = std::env::var("APPDATA") {
-        dirs.push(PathBuf::from(appdata).join("minecraft-server-manager-agent"));
+        dirs.push(PathBuf::from(appdata).join("com.craftcontrol.agent"));
     }
 
     dirs

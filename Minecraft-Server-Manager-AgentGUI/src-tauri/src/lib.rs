@@ -30,10 +30,6 @@ pub fn run() {
         .setup(|app| {
             tray::setup_system_tray(app)?;
             daemon::start_agent_polling_loop(app.handle().clone());
-            let app_handle = app.handle().clone();
-            tauri::async_runtime::spawn(async move {
-                daemon::check_update_and_spawn(&app_handle).await;
-            });
             Ok(())
         })
         .on_window_event(handle_window_event)

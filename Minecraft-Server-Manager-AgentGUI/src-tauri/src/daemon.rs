@@ -42,12 +42,6 @@ pub fn spawn_detached_agent(app_handle: &AppHandle) {
 
     let mut cmd = Command::new(&path);
 
-    if cfg!(debug_assertions) {
-        cmd.arg("--api=https://craft-control-api-staging.onrender.com");
-    } else {
-        cmd.arg("--api=https://minecraft-server-pl80.onrender.com");
-    }
-
     #[cfg(target_os = "windows")]
     {
         use std::os::windows::process::CommandExt;
@@ -63,15 +57,25 @@ pub fn spawn_detached_agent(app_handle: &AppHandle) {
         return;
     }
 
-    let _ = cmd
-        .spawn()
-        .inspect(|child| {
-            println!(
-                "Agent process spawned successfully with PID: {}",
-                child.id()
-            )
-        })
-        .inspect_err(|e| eprintln!("Failed to spawn agent process: {}", e));
+    let child = match cmd.spawn() {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Failed to spawn agent process: {}", e);
+            return;
+        }
+    };
+
+    println!(
+        "Agent process spawned successfully with PID: {}",
+        child.id()
+    );
+
+    // Spawning a detached thread to wait on the child process
+    // This prevents the process from becoming a zombie on Linux if it exits.
+    std::thread::spawn(move || {
+        let mut child_proc = child;
+        let _ = child_proc.wait();
+    });
 }
 
 async fn get_kill_switch_notes(app_handle: &AppHandle) -> Option<String> {
@@ -112,7 +116,7 @@ pub async fn check_update_and_spawn(app_handle: &AppHandle) {
             "status": "kill-switch",
             "notes": notes
         });
-        let _ = app_handle.emit("agent-state-changed", &payload.to_string());
+        let _ = app_handle.emit("agent-state-changed", payload);
         println!("Kill-switch activated! Agent spawn aborted.");
         return;
     }
@@ -121,6 +125,10 @@ pub async fn check_update_and_spawn(app_handle: &AppHandle) {
 }
 
 fn is_process_alive(pid: u32) -> bool {
+    if pid == 0 || pid == u32::MAX {
+        return false;
+    }
+
     #[cfg(unix)]
     return std::process::Command::new("kill")
         .arg("-0")
@@ -153,6 +161,7 @@ pub fn start_agent_polling_loop(app_handle: AppHandle) {
 
         loop {
             let is_online = poll_agent_status(&app_handle, &client).await;
+
             if is_online {
                 consecutive_failures = 0;
                 was_online = true;
@@ -185,34 +194,48 @@ async fn poll_agent_status(app_handle: &AppHandle, client: &reqwest::Client) -> 
     let status_url = format!("{}/status", base_url);
     let secret = crate::config::read_daemon_secret(Some(app_handle)).unwrap_or_default();
 
-    let Ok(res) = client
+    let res = client
         .get(&status_url)
         .header("Authorization", format!("Bearer {}", secret))
         .send()
-        .await
-    else {
-        let _ = app_handle.emit("agent-state-changed", r#"{"status":"offline"}"#);
-        return false;
+        .await;
+
+    let res = match res {
+        Ok(r) => r,
+        Err(_) => {
+            let _ = app_handle.emit(
+                "agent-state-changed",
+                serde_json::json!({"status":"offline"}),
+            );
+            return false;
+        }
     };
 
     if !res.status().is_success() {
-        let _ = app_handle.emit("agent-state-changed", r#"{"status":"offline"}"#);
+        let _ = app_handle.emit(
+            "agent-state-changed",
+            serde_json::json!({"status":"offline"}),
+        );
         return false;
     }
 
-    let Ok(json) = res.text().await else {
-        return false;
+    let json = match res.text().await {
+        Ok(t) => t,
+        Err(_) => return false,
     };
 
     let mut json_val: serde_json::Value = serde_json::from_str(&json).unwrap_or_default();
-    if let Some(pin) = crate::config::read_daemon_pin(Some(app_handle)) {
-        json_val["pin"] = serde_json::Value::String(pin);
-    } else {
-        json_val["pin"] = serde_json::Value::Null;
+
+    if let Some(obj) = json_val.as_object_mut() {
+        let pin_val = crate::config::read_daemon_pin(Some(app_handle))
+            .map(serde_json::Value::String)
+            .unwrap_or(serde_json::Value::Null);
+
+        obj.insert("pin".to_string(), pin_val);
     }
 
-    let modified_json = json_val.to_string();
-    let _ = app_handle.emit("agent-state-changed", &modified_json);
+    let _ = app_handle.emit("agent-state-changed", json_val);
+
     true
 }
 

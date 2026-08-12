@@ -1,71 +1,91 @@
-const { listen } = window.__TAURI__.event;
-const { invoke } = window.__TAURI__.core;
-const { check } = window.__TAURI_PLUGIN_UPDATER__ || {};
-
-
 const originalFetch = window.fetch;
 window.fetch = async (url, options = {}) => {
-  const secret = await invoke('get_daemon_secret').catch(() => '');
-  const headers = { ...options.headers };
-  if (secret) headers['Authorization'] = `Bearer ${secret}`;
-  return originalFetch(url, { ...options, headers });
+  if (
+    typeof url === "string" &&
+    (url.includes("ipc.localhost") ||
+      url.startsWith("tauri://") ||
+      url.startsWith("ipc://"))
+  ) {
+    return originalFetch(url, options);
+  }
+
+  let secret = "";
+  if (
+    window.__TAURI__ &&
+    window.__TAURI__.core &&
+    window.__TAURI__.core.invoke
+  ) {
+    secret = await window.__TAURI__.core
+      .invoke("get_daemon_secret")
+      .catch(() => "");
+  }
+
+  const newOptions = { ...options };
+  const newHeaders = new Headers(options.headers || {});
+  if (secret) {
+    newHeaders.set("Authorization", `Bearer ${secret}`);
+  }
+  newOptions.headers = newHeaders;
+
+  return originalFetch(url, newOptions);
 };
 
 const views = {
-  loading: document.getElementById('view-loading'),
-  update: document.getElementById('view-update'),
-  pin: document.getElementById('view-pin'),
-  active: document.getElementById('view-active'),
-  shutdown: document.getElementById('view-shutdown')
+  loading: document.getElementById("view-loading"),
+  update: document.getElementById("view-update"),
+  pin: document.getElementById("view-pin"),
+  active: document.getElementById("view-active"),
+  shutdown: document.getElementById("view-shutdown"),
 };
 
-const pinDisplay = document.getElementById('pin-display');
-const btnCopy = document.getElementById('btn-copy');
-const btnUnlink = document.getElementById('btn-unlink');
-const btnShutdown = document.getElementById('btn-shutdown');
+const pinDisplay = document.getElementById("pin-display");
+const btnCopy = document.getElementById("btn-copy");
+const btnUnlink = document.getElementById("btn-unlink");
+const btnShutdown = document.getElementById("btn-shutdown");
 
 let currentPin = "";
 
 const hideAllViews = () => {
-  Object.values(views).forEach(v => v.style.display = 'none');
+  Object.values(views).forEach((v) => (v.style.display = "none"));
 };
 
 const renderAgentState = (state) => {
   hideAllViews();
 
-  if (state.status === 'offline' || state.status === 'initializing') {
-    return views.loading.style.display = 'block';
+  if (state.status === "offline" || state.status === "initializing") {
+    return (views.loading.style.display = "block");
   }
 
-  if (state.status === 'waiting_pin') {
+  if (state.status === "waiting_pin") {
     currentPin = state.pin || "";
     pinDisplay.innerText = state.pin || "------";
-    return views.pin.style.display = 'block';
+    return (views.pin.style.display = "block");
   }
 
-  if (state.status === 'paired') {
-    return views.active.style.display = 'block';
+  if (state.status === "paired") {
+    return (views.active.style.display = "block");
   }
 
-  if (state.status === 'shutting_down') {
-    return views.shutdown.style.display = 'block';
+  if (state.status === "shutting_down") {
+    return (views.shutdown.style.display = "block");
   }
 
-  if (state.status === 'kill-switch') {
-    document.getElementById('update-notes').innerText = state.notes || "Tu versión está obsoleta y ya no es segura.";
-    document.getElementById('btn-update-now').onclick = async () => {
-      const btn = document.getElementById('btn-update-now');
-      const progress = document.getElementById('update-progress');
+  if (state.status === "kill-switch") {
+    document.getElementById("update-notes").innerText =
+      state.notes || "Tu versión está obsoleta y ya no es segura.";
+    document.getElementById("btn-update-now").onclick = async () => {
+      const btn = document.getElementById("btn-update-now");
+      const progress = document.getElementById("update-progress");
       btn.disabled = true;
       progress.innerText = "Buscando actualización...";
-      
+
       try {
         const update = await check();
         if (update) {
           progress.innerText = "Descargando e instalando...";
           await update.downloadAndInstall();
           progress.innerText = "Instalado. Reiniciando...";
-          await invoke('plugin:updater|restart');
+          await invoke("plugin:updater|restart");
         } else {
           progress.innerText = "No se encontró parche automático.";
           btn.disabled = false;
@@ -75,38 +95,53 @@ const renderAgentState = (state) => {
         btn.disabled = false;
       }
     };
-    return views.update.style.display = 'block';
+    return (views.update.style.display = "block");
   }
 };
 
-listen('agent-state-changed', (event) => {
-  try {
-    const state = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload;
-    renderAgentState(state);
-  } catch (e) {}
-});
+if (
+  window.__TAURI__ &&
+  window.__TAURI__.event &&
+  window.__TAURI__.event.listen
+) {
+  window.__TAURI__.event.listen("agent-state-changed", (event) => {
+    try {
+      const state =
+        typeof event.payload === "string"
+          ? JSON.parse(event.payload)
+          : event.payload;
+      renderAgentState(state);
+    } catch (e) {
+      console.error("Error processing event: ", e);
+    }
+  });
+}
 
-btnCopy.addEventListener('click', () => {
+btnCopy.addEventListener("click", () => {
   if (!currentPin) return;
   navigator.clipboard.writeText(currentPin);
   btnCopy.innerText = "¡Copiado!";
-  setTimeout(() => btnCopy.innerText = "Copiar PIN", 2000);
+  setTimeout(() => (btnCopy.innerText = "Copiar PIN"), 2000);
 });
 
-btnUnlink.addEventListener('click', () => {
-  invoke('request_unlink').catch(() => {});
+btnUnlink.addEventListener("click", () => {
+  if (window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke) {
+    window.__TAURI__.core.invoke("request_unlink").catch(() => {});
+  }
 });
 
-btnShutdown.addEventListener('click', () => {
-  invoke('request_shutdown').catch(() => {});
+import('./debugTools.js').catch(() => {});
+
+btnShutdown.addEventListener("click", () => {
+  invoke("request_shutdown").catch(() => {});
 });
 
-const btnRefreshPin = document.getElementById('btnRefreshPin');
+const btnRefreshPin = document.getElementById("btnRefreshPin");
 if (btnRefreshPin) {
-  btnRefreshPin.addEventListener('click', () => {
+  btnRefreshPin.addEventListener("click", () => {
     btnRefreshPin.innerText = "Refrescando...";
     btnRefreshPin.disabled = true;
-    invoke('request_refresh_pin').catch(() => {
+    invoke("request_refresh_pin").catch(() => {
       btnRefreshPin.innerText = "Refrescar PIN";
       btnRefreshPin.disabled = false;
     });
@@ -118,9 +153,4 @@ if (btnRefreshPin) {
   });
 }
 
-
-
-
-renderAgentState({ status: 'loading' });
-
-
+renderAgentState({ status: "initializing" });
