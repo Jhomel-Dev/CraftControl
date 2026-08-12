@@ -19,12 +19,17 @@ pub async fn request_unlink(app_handle: AppHandle) -> Result<(), String> {
     let url = format!("{}/unlink", base_url);
 
     let secret = crate::config::read_daemon_secret(Some(&app_handle)).unwrap_or_default();
-    reqwest::Client::new()
+    let res = reqwest::Client::new()
         .post(&url)
         .header("Authorization", format!("Bearer {}", secret))
         .send()
         .await
         .map_err(|e| e.to_string())?;
+
+    if !res.status().is_success() {
+        return Err(format!("Unlink failed with status: {}", res.status()));
+    }
+
     Ok(())
 }
 
