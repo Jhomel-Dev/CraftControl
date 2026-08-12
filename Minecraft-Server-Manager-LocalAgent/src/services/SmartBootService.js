@@ -69,11 +69,44 @@ export default class SmartBootService {
     const lines = output.split('\n');
     const matchingPids = [];
     for (const line of lines) {
-      if (!line.includes('craftcontrol') && !line.includes('minecraft-server-manager-localagent') && !line.includes('agentcore')) continue;
-      const match = line.trim().match(/^(\d+)/) || line.trim().match(/(\d+)$/);
-      if (match) matchingPids.push(parseInt(match[1], 10));
+      if (!this._isCraftControlProcessLine(line)) continue;
+      if (this._isProtectedDevelopmentProcess(line)) continue;
+      const pid = this._extractPidFromLine(line);
+      if (!isNaN(pid)) matchingPids.push(pid);
     }
     return matchingPids;
+  }
+
+  static _isCraftControlProcessLine(line) {
+    const lowerLine = line.toLowerCase();
+    return lowerLine.includes('craftcontrol') || 
+           lowerLine.includes('minecraft-server-manager-localagent') || 
+           lowerLine.includes('agentcore');
+  }
+
+  static _isProtectedDevelopmentProcess(line) {
+    const lowerLine = line.toLowerCase();
+    const ignoreKeywords = [
+      'nodemon',
+      'concurrently',
+      'npm',
+      'vitest',
+      'code',
+      'vscode',
+      'bash',
+      'sh -c',
+      'grep',
+      'wmic',
+      'jest',
+      'cypress'
+    ];
+    return ignoreKeywords.some(keyword => lowerLine.includes(keyword));
+  }
+
+  static _extractPidFromLine(line) {
+    const match = line.trim().match(/^(\d+)/) || line.trim().match(/(\d+)$/);
+    if (!match) return NaN;
+    return parseInt(match[1], 10);
   }
 
   static async isPortFree(port) {

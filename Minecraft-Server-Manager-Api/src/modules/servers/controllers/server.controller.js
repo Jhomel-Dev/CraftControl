@@ -259,7 +259,7 @@ export default class ServerController {
       const server = await serverService.findServerById(serverId);
       if (server.userId !== userId) return res.status(403).json({ error: 'Unauthorized' });
 
-      if (!fileName.endsWith('.zip') || fileName.includes('/')) return res.status(400).json({ error: 'Invalid file' });
+      if (!(fileName.endsWith('.zip') || fileName.endsWith('.tar.gz')) || fileName.includes('/')) return res.status(400).json({ error: 'Invalid file' });
 
       const backupPath = path.join(os.homedir(), '.minecraft-manager', 'servers', serverId, 'backups', fileName);
       
@@ -268,7 +268,7 @@ export default class ServerController {
       }
 
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Type', fileName.endsWith('.zip') ? 'application/zip' : 'application/gzip');
       
       const fileStream = fs.createReadStream(backupPath);
       fileStream.on('error', (err) => {
