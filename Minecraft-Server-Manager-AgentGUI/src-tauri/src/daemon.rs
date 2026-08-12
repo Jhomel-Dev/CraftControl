@@ -130,8 +130,7 @@ fn get_offline_sleep_secs(
         spawn_detached_agent(app_handle);
     }
 
-    let wait = (1u64 << (consecutive_failures.min(3) - 1)).min(5);
-    wait
+    (1u64 << (consecutive_failures.min(3) - 1)).min(5)
 }
 
 async fn poll_agent_status(app_handle: &AppHandle, client: &reqwest::Client) -> bool {
