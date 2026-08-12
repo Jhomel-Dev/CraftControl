@@ -66,6 +66,16 @@ fn read_port_from_lockfile(app_data: &Path) -> Option<u16> {
     u16::try_from(port_val).ok()
 }
 
+pub fn read_daemon_pid(app_handle: Option<&AppHandle>) -> Option<u32> {
+    get_agent_config_dirs(app_handle)
+        .into_iter()
+        .find_map(|dir| {
+            let content = fs::read_to_string(dir.join("daemon.lock")).ok()?;
+            let json: serde_json::Value = serde_json::from_str(&content).ok()?;
+            json.get("pid")?.as_u64().map(|p| p as u32)
+        })
+}
+
 fn read_string_from_lockfiles(app_handle: Option<&AppHandle>, key: &str) -> Option<String> {
     get_agent_config_dirs(app_handle)
         .into_iter()
