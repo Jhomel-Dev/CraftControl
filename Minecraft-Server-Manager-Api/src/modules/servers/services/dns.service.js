@@ -11,8 +11,7 @@ export default class DnsService {
 
   async setCustomDomain(subdomain, tunnelAddress) {
     if (!this.isConfigured) {
-      console.log(`[DNS Mock] Cloudflare credentials not set. Simulating DNS creation for ${subdomain} -> ${tunnelAddress}`);
-      return true;
+      throw new Error('Cloudflare credentials not configured. Cannot set DNS.');
     }
 
     if (!tunnelAddress) {

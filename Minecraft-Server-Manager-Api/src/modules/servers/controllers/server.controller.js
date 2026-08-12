@@ -14,6 +14,18 @@ const createServerSchema = z.object({
   compatibilityMode: z.boolean().optional().default(false)
 });
 
+const updateSettingsSchema = z.object({
+  maxPlayers: z.coerce.number().int().min(1).max(100000).optional(),
+  whitelist: z.boolean().optional(),
+  onlineMode: z.boolean().optional(),
+  version: z.string().optional(),
+  type: z.string().optional(),
+  memory: z.string().regex(/^\d{1,4}[MG]$/, 'Invalid RAM format (e.g. 4G or 4096M)').optional(),
+  compatibilityMode: z.boolean().optional(),
+  customDomain: z.string().max(255).optional(),
+  tunnelSecret: z.string().max(100).optional()
+});
+
 export default class ServerController {
   
   createServer = async (req, res) => {
@@ -61,11 +73,11 @@ export default class ServerController {
 
   updateSettings = async (req, res) => {
     try {
+      const parsedBody = updateSettingsSchema.parse(req.body);
       const serverService = this.getServerService(req);
       const userId = req.user.id;
       const serverId = req.params.id;
-      const settings = req.body;
-      const server = await serverService.updateSettings(serverId, userId, settings);
+      const server = await serverService.updateSettings(serverId, userId, parsedBody);
       return res.status(200).json(server);
     } catch (error) {
       this.handleError(res, error);
