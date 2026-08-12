@@ -47,12 +47,6 @@ const authenticateSocket = async (socket, next) => {
     } catch (e) {
       console.error('DB error auth agent', e);
     }
-    
-    if (agentToken === process.env.AGENT_SECRET_TOKEN) {
-      socket.isAgent = true;
-      socket.userId = 'LEGACY';
-      return next();
-    }
   }
   
   if (clientToken) {
@@ -76,11 +70,7 @@ const authenticateSocket = async (socket, next) => {
 };
 
 const registerAgentEvents = (socket) => {
-  if (socket.userId !== 'LEGACY') {
-    socket.join(`agent-${socket.userId}`);
-  } else {
-    socket.join('agent-global');
-  }
+  socket.join(`agent-${socket.userId}`);
 
   socket.on('TELEMETRY_UPDATE', (payload) => handleTelemetry(socket, payload));
   socket.on('AGENT_INFO', (info) => {
@@ -99,12 +89,18 @@ const registerAgentEvents = (socket) => {
 const registerClientEvents = (socket) => {
   socket.on('JOIN_SERVER_CONSOLE', (serverId) => joinServerConsole(socket, serverId));
   socket.on('LEAVE_SERVER_CONSOLE', (serverId) => socket.leave(serverId));
-  socket.on('CLEAR_SERVER_CONSOLE', (serverId) => clearServerConsole(serverId));
+  socket.on('CLEAR_SERVER_CONSOLE', async (serverId) => {
+    try {
+      const server = await prisma.server.findUnique({ where: { id: serverId } });
+      if (!server || server.userId !== socket.user.id) return;
+      clearServerConsole(serverId);
+    } catch (e) {}
+  });
   socket.on('SEND_COMMAND', async (payload) => {
     try {
       const server = await prisma.server.findUnique({ where: { id: payload.serverId } });
       if (!server || server.userId !== socket.user.id) return;
-      socket.to(`agent-${server.userId}`).to('agent-global').emit('SEND_COMMAND', payload);
+      socket.to(`agent-${server.userId}`).emit('SEND_COMMAND', payload);
     } catch (e) {
       console.error('[Agent Gateway] Error in SEND_COMMAND:', e);
     }
@@ -210,9 +206,8 @@ const updateDnsBackground = async (server, address) => {
 const handleAgentDisconnect = async (socket) => {
   try {
     agentHardwareMap.delete(socket.userId);
-    const whereClause = socket.userId === 'LEGACY' ? {} : { userId: socket.userId };
     await prisma.server.updateMany({
-      where: whereClause,
+      where: { userId: socket.userId },
       data: { status: 'OFFLINE' }
     });
     
