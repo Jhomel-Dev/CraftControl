@@ -1,47 +1,51 @@
-import fs from 'fs/promises';
-import path from 'path';
-import os from 'os';
-import { execFile } from 'child_process';
-import util from 'util';
+import fs from "fs/promises";
+import path from "path";
+import os from "os";
+import { execFile } from "child_process";
+import util from "util";
 
 const execFilePromise = util.promisify(execFile);
 
 export default class FileService {
-  
   async execute(payload) {
     const { serverId, action, filePath, content } = payload;
     this.validateInputs(serverId, filePath);
-    
-    const managerDir = path.join(os.homedir(), '.minecraft-manager');
-    const baseDir = path.resolve(managerDir, 'servers', serverId);
+
+    const managerDir = path.join(os.homedir(), ".minecraft-manager");
+    const baseDir = path.resolve(managerDir, "servers", serverId);
     await this.ensureDirectory(baseDir);
-    
-    const targetPath = this.getSafePath(baseDir, filePath || '/');
+
+    const targetPath = this.getSafePath(baseDir, filePath || "/");
 
     switch (action) {
-      case 'list':
+      case "list":
         return this.listFiles(targetPath);
-      case 'read':
+      case "read":
         return this.readFile(targetPath);
-      case 'write':
+      case "write":
         return this.writeFile(targetPath, content, payload.isBase64);
-      case 'append':
+      case "append":
         return this.appendFile(targetPath, content, payload.isBase64);
-      case 'delete':
+      case "delete":
         return this.deleteFile(targetPath);
-      case 'unzip':
-        return this.unzipFile(targetPath, payload.destPath ? this.getSafePath(baseDir, payload.destPath) : baseDir);
-      case 'download':
+      case "unzip":
+        return this.unzipFile(
+          targetPath,
+          payload.destPath
+            ? this.getSafePath(baseDir, payload.destPath)
+            : baseDir,
+        );
+      case "download":
         return this.downloadFile(targetPath, payload.url);
-      case 'size':
+      case "size":
         return this.getDirectorySize(targetPath);
       default:
-        throw new Error('Invalid FS action');
+        throw new Error("Invalid FS action");
     }
   }
 
   validateInputs(serverId, filePath) {
-    if (!serverId) throw new Error('Server ID is required');
+    if (!serverId) throw new Error("Server ID is required");
   }
 
   async ensureDirectory(dir) {
@@ -55,8 +59,8 @@ export default class FileService {
   getSafePath(baseDir, relativePath) {
     const targetPath = path.join(baseDir, relativePath);
     const relative = path.relative(baseDir, targetPath);
-    if (relative.startsWith('..') || path.isAbsolute(relative)) {
-      throw new Error('Path traversal detected');
+    if (relative.startsWith("..") || path.isAbsolute(relative)) {
+      throw new Error("Path traversal detected");
     }
     return targetPath;
   }
@@ -66,26 +70,28 @@ export default class FileService {
     try {
       items = await fs.readdir(targetPath, { withFileTypes: true });
     } catch (err) {
-      if (err.code === 'ENOENT') return [];
+      if (err.code === "ENOENT") return [];
       throw err;
     }
-    
-    const list = await Promise.all(items.map(async (item) => {
-      const isDir = item.isDirectory();
-      let size = 0;
-      
-      if (!isDir) {
-        const stats = await fs.stat(path.join(targetPath, item.name));
-        size = stats.size;
-      }
-      
-      return {
-        name: item.name,
-        isDir,
-        size
-      };
-    }));
-    
+
+    const list = await Promise.all(
+      items.map(async (item) => {
+        const isDir = item.isDirectory();
+        let size = 0;
+
+        if (!isDir) {
+          const stats = await fs.stat(path.join(targetPath, item.name));
+          size = stats.size;
+        }
+
+        return {
+          name: item.name,
+          isDir,
+          size,
+        };
+      }),
+    );
+
     return list.sort((a, b) => {
       if (a.isDir && !b.isDir) return -1;
       if (!a.isDir && b.isDir) return 1;
@@ -95,10 +101,10 @@ export default class FileService {
 
   async readFile(targetPath) {
     try {
-      const content = await fs.readFile(targetPath, 'utf-8');
+      const content = await fs.readFile(targetPath, "utf-8");
       return { content };
     } catch (err) {
-      if (err.code === 'ENOENT') return { content: '' };
+      if (err.code === "ENOENT") return { content: "" };
       throw err;
     }
   }
@@ -106,9 +112,9 @@ export default class FileService {
   async writeFile(targetPath, content, isBase64 = false) {
     await fs.mkdir(path.dirname(targetPath), { recursive: true });
     if (isBase64) {
-      await fs.writeFile(targetPath, Buffer.from(content, 'base64'));
+      await fs.writeFile(targetPath, Buffer.from(content, "base64"));
     } else {
-      await fs.writeFile(targetPath, content, 'utf-8');
+      await fs.writeFile(targetPath, content, "utf-8");
     }
     return { success: true };
   }
@@ -116,13 +122,13 @@ export default class FileService {
   async appendFile(targetPath, content, isBase64 = false) {
     await fs.mkdir(path.dirname(targetPath), { recursive: true });
     if (isBase64) {
-      await fs.appendFile(targetPath, Buffer.from(content, 'base64'));
+      await fs.appendFile(targetPath, Buffer.from(content, "base64"));
     } else {
-      await fs.appendFile(targetPath, content, 'utf-8');
+      await fs.appendFile(targetPath, content, "utf-8");
     }
     return { success: true };
   }
-  
+
   async downloadFile(targetPath, url) {
     await fs.mkdir(path.dirname(targetPath), { recursive: true });
     const res = await fetch(url);
@@ -146,21 +152,21 @@ export default class FileService {
     try {
       await fs.access(zipPath);
       await this.ensureDirectory(destPath);
-      await execFilePromise('unzip', ['-o', zipPath, '-d', destPath]);
+      await execFilePromise("unzip", ["-o", zipPath, "-d", destPath]);
       return { success: true };
     } catch (err) {
-      console.error('Error unzipping:', err);
+      console.error("Error unzipping:", err);
       throw new Error(`Failed to unzip: ${err.message}`);
     }
   }
 
   async getDirectorySize(targetPath) {
     try {
-      const { stdout } = await execFilePromise('du', ['-sb', targetPath]);
-      const sizeBytes = parseInt(stdout.split('\t')[0]);
+      const { stdout } = await execFilePromise("du", ["-sb", targetPath]);
+      const sizeBytes = parseInt(stdout.split("\t")[0]);
       return { size: sizeBytes };
     } catch (err) {
-      console.error('Error getting directory size:', err);
+      console.error("Error getting directory size:", err);
       return { size: 0 };
     }
   }

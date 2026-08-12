@@ -1,6 +1,6 @@
-import killPort from 'kill-port';
-import { execSync } from 'child_process';
-import EnvManager from '../config/EnvManager.js';
+import killPort from "kill-port";
+import { execSync } from "child_process";
+import EnvManager from "../config/EnvManager.js";
 
 export default class SmartBootService {
   static async runPreflightCleanup() {
@@ -32,9 +32,11 @@ export default class SmartBootService {
 
   static async _verifyIdentityEndpoint(port) {
     try {
-      const res = await fetch(`http://127.0.0.1:${port}/identity`, { signal: AbortSignal.timeout(1000) });
+      const res = await fetch(`http://127.0.0.1:${port}/identity`, {
+        signal: AbortSignal.timeout(1000),
+      });
       const data = await res.json();
-      return data && data.identity === 'CraftControlAgent';
+      return data && data.identity === "CraftControlAgent";
     } catch {
       return false;
     }
@@ -42,7 +44,7 @@ export default class SmartBootService {
 
   static _killPidForcefully(pid) {
     try {
-      process.kill(pid, 'SIGKILL');
+      process.kill(pid, "SIGKILL");
     } catch {}
   }
 
@@ -54,11 +56,15 @@ export default class SmartBootService {
   }
 
   static _findCraftControlPids() {
-    const command = process.platform === 'win32'
-      ? 'wmic process get processid,commandline'
-      : 'ps -eo pid,command';
+    const command =
+      process.platform === "win32"
+        ? "wmic process get processid,commandline"
+        : "ps -eo pid,command";
     try {
-      const output = execSync(command, { stdio: ['ignore', 'pipe', 'ignore'], encoding: 'utf8' });
+      const output = execSync(command, {
+        stdio: ["ignore", "pipe", "ignore"],
+        encoding: "utf8",
+      });
       return this._parsePidsFromPsOutput(output);
     } catch {
       return [];
@@ -66,7 +72,7 @@ export default class SmartBootService {
   }
 
   static _parsePidsFromPsOutput(output) {
-    const lines = output.split('\n');
+    const lines = output.split("\n");
     const matchingPids = [];
     for (const line of lines) {
       if (!this._isCraftControlProcessLine(line)) continue;
@@ -79,28 +85,30 @@ export default class SmartBootService {
 
   static _isCraftControlProcessLine(line) {
     const lowerLine = line.toLowerCase();
-    return lowerLine.includes('craftcontrol') || 
-           lowerLine.includes('minecraft-server-manager-localagent') || 
-           lowerLine.includes('agentcore');
+    return (
+      lowerLine.includes("craftcontrol") ||
+      lowerLine.includes("minecraft-server-manager-localagent") ||
+      lowerLine.includes("agentcore")
+    );
   }
 
   static _isProtectedDevelopmentProcess(line) {
     const lowerLine = line.toLowerCase();
     const ignoreKeywords = [
-      'nodemon',
-      'concurrently',
-      'npm',
-      'vitest',
-      'code',
-      'vscode',
-      'bash',
-      'sh -c',
-      'grep',
-      'wmic',
-      'jest',
-      'cypress'
+      "nodemon",
+      "concurrently",
+      "npm",
+      "vitest",
+      "code",
+      "vscode",
+      "bash",
+      "sh -c",
+      "grep",
+      "wmic",
+      "jest",
+      "cypress",
     ];
-    return ignoreKeywords.some(keyword => lowerLine.includes(keyword));
+    return ignoreKeywords.some((keyword) => lowerLine.includes(keyword));
   }
 
   static _extractPidFromLine(line) {
@@ -111,10 +119,12 @@ export default class SmartBootService {
 
   static async isPortFree(port) {
     try {
-      await fetch(`http://127.0.0.1:${port}/identity`, { signal: AbortSignal.timeout(1000) });
+      await fetch(`http://127.0.0.1:${port}/identity`, {
+        signal: AbortSignal.timeout(1000),
+      });
       return false;
     } catch (e) {
-      return e.code === 'ECONNREFUSED' || e.cause?.code === 'ECONNREFUSED';
+      return e.code === "ECONNREFUSED" || e.cause?.code === "ECONNREFUSED";
     }
   }
 
@@ -127,7 +137,7 @@ export default class SmartBootService {
 
     try {
       await killPort(port);
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise((resolve) => setTimeout(resolve, 1500));
     } catch {}
   }
 }

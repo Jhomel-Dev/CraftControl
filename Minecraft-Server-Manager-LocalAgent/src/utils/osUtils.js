@@ -1,86 +1,86 @@
-import os from 'os';
-import { execSync } from 'child_process';
-import * as tar from 'tar';
-import AdmZip from 'adm-zip';
+import os from "os";
+import { execSync } from "child_process";
+import * as tar from "tar";
+import AdmZip from "adm-zip";
 
-export const isWindows = os.platform() === 'win32';
+export const isWindows = os.platform() === "win32";
 
 export function getOsInfo() {
-    if (isWindows) {
-        return { platform: 'windows', executableExt: '.exe', archiveExt: '.zip' };
-    }
+  if (isWindows) {
+    return { platform: "windows", executableExt: ".exe", archiveExt: ".zip" };
+  }
 
-    if (os.platform() === 'darwin') {
-        return { platform: 'mac', executableExt: '', archiveExt: '.tar.gz' };
-    }
+  if (os.platform() === "darwin") {
+    return { platform: "mac", executableExt: "", archiveExt: ".tar.gz" };
+  }
 
-    return { platform: 'linux', executableExt: '', archiveExt: '.tar.gz' };
+  return { platform: "linux", executableExt: "", archiveExt: ".tar.gz" };
 }
 
 export async function extractArchive(archivePath, extractPath) {
-    if (archivePath.endsWith('.zip')) {
-        return extractZip(archivePath, extractPath);
-    }
+  if (archivePath.endsWith(".zip")) {
+    return extractZip(archivePath, extractPath);
+  }
 
-    if (archivePath.endsWith('.tar.gz') || archivePath.endsWith('.tgz')) {
-        return extractTar(archivePath, extractPath);
-    }
+  if (archivePath.endsWith(".tar.gz") || archivePath.endsWith(".tgz")) {
+    return extractTar(archivePath, extractPath);
+  }
 
-    throw new Error(`Unsupported archive format for extraction: ${archivePath}`);
+  throw new Error(`Unsupported archive format for extraction: ${archivePath}`);
 }
 
 function extractZip(archivePath, extractPath) {
-    const zip = new AdmZip(archivePath);
-    zip.extractAllTo(extractPath, true);
+  const zip = new AdmZip(archivePath);
+  zip.extractAllTo(extractPath, true);
 }
 
 async function extractTar(archivePath, extractPath) {
-    await tar.x({ file: archivePath, cwd: extractPath });
+  await tar.x({ file: archivePath, cwd: extractPath });
 }
 
 export function freePort(port) {
-    try {
-        if (isWindows) {
-            freeWindowsPort(port);
-            return;
-        }
-        freeUnixPort(port);
-    } catch (e) { }
+  try {
+    if (isWindows) {
+      freeWindowsPort(port);
+      return;
+    }
+    freeUnixPort(port);
+  } catch (e) {}
 }
 
 function freeWindowsPort(port) {
-    const output = execSync(`netstat -ano | findstr :${port}`).toString();
-    const firstLine = output.split('\n')[0]?.trim();
-    if (!firstLine) return;
+  const output = execSync(`netstat -ano | findstr :${port}`).toString();
+  const firstLine = output.split("\n")[0]?.trim();
+  if (!firstLine) return;
 
-    const parts = firstLine.split(/\s+/);
-    const pid = parts[parts.length - 1];
+  const parts = firstLine.split(/\s+/);
+  const pid = parts[parts.length - 1];
 
-    if (!pid || isNaN(parseInt(pid, 10)) || pid === '0') return;
+  if (!pid || isNaN(parseInt(pid, 10)) || pid === "0") return;
 
-    execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'ignore' });
+  execSync(`taskkill /F /T /PID ${pid}`, { stdio: "ignore" });
 }
 
 function freeUnixPort(port) {
+  try {
+    execSync(`fuser -k -9 ${port}/tcp`, { stdio: "ignore" });
+  } catch {
     try {
-        execSync(`fuser -k -9 ${port}/tcp`, { stdio: 'ignore' });
-    } catch {
-        try {
-            execSync(`lsof -ti :${port} | xargs -r kill -9`, { stdio: 'ignore' });
-        } catch {}
-    }
+      execSync(`lsof -ti :${port} | xargs -r kill -9`, { stdio: "ignore" });
+    } catch {}
+  }
 }
 
 export function killProcessHard(pid) {
+  try {
+    if (isWindows) {
+      execSync(`taskkill /F /T /PID ${pid}`, { stdio: "ignore" });
+      return;
+    }
     try {
-        if (isWindows) {
-            execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'ignore' });
-            return;
-        }
-        try {
-            process.kill(-pid, 'SIGKILL');
-        } catch {
-            process.kill(pid, 'SIGKILL');
-        }
-    } catch (e) { }
+      process.kill(-pid, "SIGKILL");
+    } catch {
+      process.kill(pid, "SIGKILL");
+    }
+  } catch (e) {}
 }
