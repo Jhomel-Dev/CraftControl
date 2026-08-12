@@ -65,7 +65,7 @@
     "noServersSubtitle": "You haven't created any servers yet. Start your adventure now!",
     "createFirstServer": "Create my first server",
     "versionLabel": "Version: {version}",
-    "ramLabel": "RAM: {memory} MB"
+    "ramLabel": "RAM: {memory}"
   },
   "DashboardNavbar": {
     "myProfile": "My Profile",
