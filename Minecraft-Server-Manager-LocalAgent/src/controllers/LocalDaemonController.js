@@ -1,11 +1,11 @@
-import http from 'http';
-import EnvManager from '../config/EnvManager.js';
-import SmartBootService from '../services/SmartBootService.js';
+import http from "http";
+import EnvManager from "../config/EnvManager.js";
+import SmartBootService from "../services/SmartBootService.js";
 
 export default class LocalDaemonController {
   constructor(port = EnvManager.getDaemonPort()) {
     this.port = port;
-    this.status = 'initializing';
+    this.status = "initializing";
     this.server = null;
     this.onUnlinkCallback = null;
     this.onShutdownCallback = null;
@@ -31,9 +31,11 @@ export default class LocalDaemonController {
 
   _tryListen(port) {
     return new Promise((resolve) => {
-      const tempServer = http.createServer((req, res) => this.handleRequest(req, res));
-      tempServer.once('error', () => resolve(false));
-      tempServer.listen(port, '127.0.0.1', () => {
+      const tempServer = http.createServer((req, res) =>
+        this.handleRequest(req, res),
+      );
+      tempServer.once("error", () => resolve(false));
+      tempServer.listen(port, "127.0.0.1", () => {
         this.server = tempServer;
         resolve(true);
       });
@@ -55,12 +57,15 @@ export default class LocalDaemonController {
   handleRequest(req, res) {
     this._setCorsHeaders(req, res);
 
-    if (req.method === 'OPTIONS') {
+    if (req.method === "OPTIONS") {
       return this._sendResponse(res, 200);
     }
 
     if (!this._isAuthorizedRequest(req)) {
-      return this._sendResponse(res, 401, { success: false, error: 'Unauthorized' });
+      return this._sendResponse(res, 401, {
+        success: false,
+        error: "Unauthorized",
+      });
     }
 
     const routeHandler = this._getRouteHandler(req.method, req.url);
@@ -72,18 +77,25 @@ export default class LocalDaemonController {
   }
 
   _setCorsHeaders(req, res) {
-    const origin = req.headers.origin || '';
-    const allowedOrigins = ['tauri://localhost', 'http://tauri.localhost', 'https://tauri.localhost'];
-    
-    if (allowedOrigins.includes(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
+    const origin = req.headers.origin || "";
+    const allowedOrigins = [
+      "tauri://localhost",
+      "http://tauri.localhost",
+      "https://tauri.localhost",
+    ];
+
+    if (allowedOrigins.includes(origin) || origin.startsWith("http://127.0.0.1:") || origin.startsWith("http://localhost:")) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
     }
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Authorization, Content-Type",
+    );
   }
 
   _isAuthorizedRequest(req) {
-    if (req.url === '/identity' && req.method === 'GET') return true;
+    if (req.url === "/identity" && req.method === "GET") return true;
     const authHeader = req.headers.authorization;
     const expectedSecret = EnvManager.getDaemonSecret();
     return authHeader === `Bearer ${expectedSecret}`;
@@ -91,18 +103,18 @@ export default class LocalDaemonController {
 
   _getRouteHandler(method, url) {
     const routes = {
-      'GET /identity': this._handleIdentity,
-      'GET /status': this._handleStatus,
-      'POST /unlink': this._handleUnlink,
-      'POST /shutdown': this._handleShutdown,
-      'POST /set-api': this._handleSetApi
+      "GET /identity": this._handleIdentity,
+      "GET /status": this._handleStatus,
+      "POST /unlink": this._handleUnlink,
+      "POST /shutdown": this._handleShutdown,
+      "POST /set-api": this._handleSetApi,
     };
     return routes[`${method} ${url}`];
   }
 
   _sendResponse(res, statusCode, data = null) {
     if (data) {
-      res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+      res.writeHead(statusCode, { "Content-Type": "application/json" });
       return res.end(JSON.stringify(data));
     }
     res.writeHead(statusCode);
@@ -111,15 +123,15 @@ export default class LocalDaemonController {
 
   _handleIdentity(req, res) {
     return this._sendResponse(res, 200, {
-      app: 'craftcontrol-agent',
-      identity: 'CraftControlAgent'
+      app: "craftcontrol-agent",
+      identity: "CraftControlAgent",
     });
   }
 
   _handleStatus(req, res) {
     return this._sendResponse(res, 200, {
       status: this.status,
-      apiUrl: EnvManager.getApiUrl()
+      apiUrl: EnvManager.getApiUrl(),
     });
   }
 
@@ -129,18 +141,18 @@ export default class LocalDaemonController {
   }
 
   _handleShutdown(req, res) {
-    this.status = 'shutting_down';
+    this.status = "shutting_down";
     if (this.onShutdownCallback) this.onShutdownCallback();
-    return this._sendResponse(res, 200, { 
-      success: true, 
-      message: 'Graceful shutdown initiated' 
+    return this._sendResponse(res, 200, {
+      success: true,
+      message: "Graceful shutdown initiated",
     });
   }
 
   _handleSetApi(req, res) {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', () => this._processSetApiBody(body, res));
+    let body = "";
+    req.on("data", (chunk) => (body += chunk));
+    req.on("end", () => this._processSetApiBody(body, res));
   }
 
   _processSetApiBody(body, res) {
@@ -153,4 +165,3 @@ export default class LocalDaemonController {
     }
   }
 }
-

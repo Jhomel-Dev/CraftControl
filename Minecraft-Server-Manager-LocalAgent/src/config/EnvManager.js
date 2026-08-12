@@ -1,15 +1,20 @@
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
-import crypto from 'crypto';
+import fs from "fs";
+import path from "path";
+import os from "os";
+import crypto from "crypto";
 
 const getAppDataPath = () => {
   if (process.env.APPDATA) {
-    return path.join(process.env.APPDATA, 'minecraft-server-manager-agent');
-  } else if (process.platform === 'darwin') {
-    return path.join(os.homedir(), 'Library', 'Application Support', 'minecraft-server-manager-agent');
+    return path.join(process.env.APPDATA, "com.craftcontrol.agent");
+  } else if (process.platform === "darwin") {
+    return path.join(
+      os.homedir(),
+      "Library",
+      "Application Support",
+      "com.craftcontrol.agent",
+    );
   } else {
-    return path.join(os.homedir(), '.config', 'minecraft-server-manager-agent');
+    return path.join(os.homedir(), ".config", "com.craftcontrol.agent");
   }
 };
 
@@ -18,19 +23,19 @@ if (!fs.existsSync(appDataDir)) {
   fs.mkdirSync(appDataDir, { recursive: true });
 }
 
-const DEFAULT_API_URL = 'https://minecraft-server-pl80.onrender.com';
-const ENV_PATH = process.pkg 
-  ? path.join(appDataDir, '.env')
-  : path.join(process.cwd(), '.env');
-const LOCK_PATH = path.join(appDataDir, 'daemon.lock');
+const DEFAULT_API_URL = "https://minecraft-server-pl80.onrender.com";
+const ENV_PATH = process.pkg
+  ? path.join(appDataDir, ".env")
+  : path.join(process.cwd(), ".env");
+const LOCK_PATH = path.join(appDataDir, "daemon.lock");
 
 export default class EnvManager {
   static ENV_PATH = ENV_PATH;
 
   static getDaemonSecret() {
     if (!process.env.DAEMON_SECRET) {
-      const secret = crypto.randomBytes(32).toString('hex');
-      this._updateEnvVar('DAEMON_SECRET', secret);
+      const secret = crypto.randomBytes(32).toString("hex");
+      this._updateEnvVar("DAEMON_SECRET", secret);
       process.env.DAEMON_SECRET = secret;
     }
     return process.env.DAEMON_SECRET;
@@ -41,18 +46,18 @@ export default class EnvManager {
   }
 
   static getDaemonPort() {
-    const rawPort = process.env.DAEMON_PORT || '45987';
+    const rawPort = process.env.DAEMON_PORT || "45987";
     return parseInt(rawPort, 10);
   }
 
   static saveDaemonPort(port) {
-    this._updateEnvVar('DAEMON_PORT', String(port));
+    this._updateEnvVar("DAEMON_PORT", String(port));
   }
 
   static readDaemonLock() {
     if (!fs.existsSync(LOCK_PATH)) return null;
     try {
-      const content = fs.readFileSync(LOCK_PATH, 'utf8');
+      const content = fs.readFileSync(LOCK_PATH, "utf8");
       return JSON.parse(content);
     } catch {
       return null;
@@ -68,17 +73,23 @@ export default class EnvManager {
       port: Number(port),
       secret: this.getDaemonSecret(),
       pin: global.currentPairingPin || null,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
-    fs.writeFileSync(LOCK_PATH, JSON.stringify(data, null, 2), { encoding: 'utf8', mode: 0o600 });
+    fs.writeFileSync(LOCK_PATH, JSON.stringify(data, null, 2), {
+      encoding: "utf8",
+      mode: 0o600,
+    });
   }
 
   static updateDaemonLockPin(pin) {
     if (fs.existsSync(LOCK_PATH)) {
       try {
-        const data = JSON.parse(fs.readFileSync(LOCK_PATH, 'utf8'));
+        const data = JSON.parse(fs.readFileSync(LOCK_PATH, "utf8"));
         data.pin = pin;
-        fs.writeFileSync(LOCK_PATH, JSON.stringify(data, null, 2), { encoding: 'utf8', mode: 0o600 });
+        fs.writeFileSync(LOCK_PATH, JSON.stringify(data, null, 2), {
+          encoding: "utf8",
+          mode: 0o600,
+        });
       } catch (e) {}
     }
   }
@@ -91,48 +102,49 @@ export default class EnvManager {
   }
 
   static getApiUrl() {
+    const argUrl = process.argv.find((arg) => arg.startsWith("--api="));
+    if (argUrl) return argUrl.split("=")[1];
     if (process.env.API_URL) return process.env.API_URL;
-    const argUrl = process.argv.find(arg => arg.startsWith('--api='));
-    if (argUrl) return argUrl.split('=')[1];
     return DEFAULT_API_URL;
   }
 
   static getAgentToken() {
-    const argToken = process.argv.find(arg => arg.startsWith('--token='));
-    if (argToken) return argToken.split('=')[1];
+    const argToken = process.argv.find((arg) => arg.startsWith("--token="));
+    if (argToken) return argToken.split("=")[1];
     return process.env.AGENT_SECRET_TOKEN || process.env.AGENT_TOKEN;
   }
 
   static getAgentStatus() {
-    return process.env.AGENT_STATUS || 'ACTIVE';
+    return process.env.AGENT_STATUS || "ACTIVE";
   }
 
   static saveTokenToEnv(token) {
-    this._updateEnvVar('AGENT_SECRET_TOKEN', token);
+    this._updateEnvVar("AGENT_SECRET_TOKEN", token);
   }
 
   static saveStatusToEnv(status) {
-    this._updateEnvVar('AGENT_STATUS', status);
+    this._updateEnvVar("AGENT_STATUS", status);
   }
 
   static updateApiUrl(url) {
-    this._updateEnvVar('API_URL', url);
+    this._updateEnvVar("API_URL", url);
   }
 
   static _updateEnvVar(key, value) {
-    let envContent = '';
-    
+    let envContent = "";
+
     if (fs.existsSync(ENV_PATH)) {
-      envContent = fs.readFileSync(ENV_PATH, 'utf8');
+      envContent = fs.readFileSync(ENV_PATH, "utf8");
     }
-    
+
     if (envContent.includes(`${key}=`)) {
       const regex = new RegExp(`${key}=.*`);
       envContent = envContent.replace(regex, `${key}=${value}`);
     } else {
       envContent += `\n${key}=${value}\n`;
     }
-    
-    fs.writeFileSync(ENV_PATH, envContent.trim() + '\n');
+
+    fs.writeFileSync(ENV_PATH, envContent.trim() + "\n");
+    process.env[key] = value;
   }
 }

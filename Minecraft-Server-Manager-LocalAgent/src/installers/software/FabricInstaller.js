@@ -1,104 +1,133 @@
-import fs from 'fs';
-import path from 'path';
-import { spawnSync } from 'child_process';
-import { downloadFile } from '../../utils/httpUtils.js';
+import fs from "fs";
+import path from "path";
+import { spawnSync } from "child_process";
+import { downloadFile } from "../../utils/httpUtils.js";
 
 export default class FabricInstaller {
-    constructor(jarsDir, javaInstaller) {
-        this.jarsDir = jarsDir;
-        this.javaInstaller = javaInstaller;
+  constructor(jarsDir, javaInstaller) {
+    this.jarsDir = jarsDir;
+    this.javaInstaller = javaInstaller;
+  }
+
+  async resolveVersion(fullVersion) {
+    const res = await fetch("https://meta.fabricmc.net/v2/versions/game");
+    if (!res.ok) throw new Error("Failed to fetch Fabric metadata");
+
+    const data = await res.json();
+    const versionsArr = data.map((v) => v.version);
+
+    if (versionsArr.includes(fullVersion))
+      return { mcVer: fullVersion, loaderVer: null };
+
+    versionsArr.sort((a, b) => b.length - a.length);
+    for (const v of versionsArr) {
+      if (fullVersion.startsWith(v + "-")) {
+        return { mcVer: v, loaderVer: fullVersion.substring(v.length + 1) };
+      }
     }
 
-    async resolveVersion(fullVersion) {
-        const res = await fetch("https://meta.fabricmc.net/v2/versions/game");
-        if (!res.ok) throw new Error('Failed to fetch Fabric metadata');
-        
-        const data = await res.json();
-        const versionsArr = data.map(v => v.version);
-        
-        if (versionsArr.includes(fullVersion)) return { mcVer: fullVersion, loaderVer: null };
+    return { mcVer: fullVersion, loaderVer: null };
+  }
 
-        versionsArr.sort((a, b) => b.length - a.length);
-        for (const v of versionsArr) {
-            if (fullVersion.startsWith(v + '-')) {
-                return { mcVer: v, loaderVer: fullVersion.substring(v.length + 1) };
-            }
-        }
-        
-        return { mcVer: fullVersion, loaderVer: null };
+  async install(fullVersion, dataDir) {
+    const { mcVer, loaderVer } = await this.resolveVersion(fullVersion);
+    const fabricDir = path.join(this.jarsDir, `Fabric-${fullVersion}`);
+    const launchJar = path.join(fabricDir, "fabric-server-launch.jar");
+    const librariesDir = path.join(fabricDir, "libraries");
+
+    await this.ensureFabricIsDownloaded(
+      mcVer,
+      loaderVer,
+      fullVersion,
+      fabricDir,
+      launchJar,
+    );
+
+    this.linkLibraries(librariesDir, path.join(dataDir, "libraries"));
+    this.linkLibraries(
+      path.join(fabricDir, "server.jar"),
+      path.join(dataDir, "server.jar"),
+    );
+
+    return { type: "jar", path: launchJar };
+  }
+
+  async ensureFabricIsDownloaded(
+    mcVer,
+    loaderVer,
+    fullVersion,
+    fabricDir,
+    launchJar,
+  ) {
+    if (fs.existsSync(launchJar)) return;
+
+    const res = await fetch("https://meta.fabricmc.net/v2/versions/installer");
+    if (!res.ok) throw new Error("Failed to fetch Fabric installer");
+
+    const data = await res.json();
+    const installerVersion = data.find((i) => i.stable).version;
+    const installerUrl = `https://maven.fabricmc.net/net/fabricmc/fabric-installer/${installerVersion}/fabric-installer-${installerVersion}.jar`;
+    const installerPath = path.join(
+      this.jarsDir,
+      `fabric-installer-${fullVersion}.jar`,
+    );
+
+    await downloadFile(installerUrl, installerPath);
+
+    if (!fs.existsSync(fabricDir)) fs.mkdirSync(fabricDir, { recursive: true });
+
+    const javaExe = await this.javaInstaller.ensureJavaIsInstalled(mcVer);
+
+    const args = ["-jar", installerPath, "server", "-mcversion", mcVer];
+    if (loaderVer) {
+      args.push("-loader", loaderVer);
+    }
+    args.push("-downloadMinecraft");
+
+    const result = spawnSync(javaExe, args, {
+      cwd: fabricDir,
+      stdio: "inherit",
+    });
+
+    if (result.error) {
+      throw new Error(
+        `Failed to start Fabric installer: ${result.error.message}`,
+      );
+    }
+    if (result.status !== 0) {
+      throw new Error(
+        `Fabric installer failed with exit code ${result.status}`,
+      );
     }
 
-    async install(fullVersion, dataDir) {
-        const { mcVer, loaderVer } = await this.resolveVersion(fullVersion);
-        const fabricDir = path.join(this.jarsDir, `Fabric-${fullVersion}`);
-        const launchJar = path.join(fabricDir, 'fabric-server-launch.jar');
-        const librariesDir = path.join(fabricDir, 'libraries');
+    fs.unlinkSync(installerPath);
+  }
 
-        await this.ensureFabricIsDownloaded(mcVer, loaderVer, fullVersion, fabricDir, launchJar);
-        
-        this.linkLibraries(librariesDir, path.join(dataDir, 'libraries'));
-        this.linkLibraries(path.join(fabricDir, 'server.jar'), path.join(dataDir, 'server.jar'));
+  linkLibraries(sourcePath, destPath) {
+    if (!fs.existsSync(sourcePath)) return;
+    if (fs.existsSync(destPath)) return;
 
-        return { type: 'jar', path: launchJar };
+    try {
+      fs.symlinkSync(sourcePath, destPath);
+    } catch (err) {
+      this.copyRecursive(sourcePath, destPath);
+    }
+  }
+
+  copyRecursive(sourcePath, destPath) {
+    const stat = fs.statSync(sourcePath);
+    if (!stat.isDirectory()) {
+      fs.copyFileSync(sourcePath, destPath);
+      return;
     }
 
-    async ensureFabricIsDownloaded(mcVer, loaderVer, fullVersion, fabricDir, launchJar) {
-        if (fs.existsSync(launchJar)) return;
-
-        const res = await fetch('https://meta.fabricmc.net/v2/versions/installer');
-        if (!res.ok) throw new Error('Failed to fetch Fabric installer');
-        
-        const data = await res.json();
-        const installerVersion = data.find(i => i.stable).version;
-        const installerUrl = `https://maven.fabricmc.net/net/fabricmc/fabric-installer/${installerVersion}/fabric-installer-${installerVersion}.jar`;
-        const installerPath = path.join(this.jarsDir, `fabric-installer-${fullVersion}.jar`);
-        
-        await downloadFile(installerUrl, installerPath);
-        
-        if (!fs.existsSync(fabricDir)) fs.mkdirSync(fabricDir, { recursive: true });
-        
-        const javaExe = await this.javaInstaller.ensureJavaIsInstalled(mcVer);
-        
-        const args = ['-jar', installerPath, 'server', '-mcversion', mcVer];
-        if (loaderVer) {
-            args.push('-loader', loaderVer);
-        }
-        args.push('-downloadMinecraft');
-
-        const result = spawnSync(javaExe, args, { cwd: fabricDir, stdio: 'inherit' });
-        
-        if (result.error) {
-            throw new Error(`Failed to start Fabric installer: ${result.error.message}`);
-        }
-        if (result.status !== 0) {
-            throw new Error(`Fabric installer failed with exit code ${result.status}`);
-        }
-        
-        fs.unlinkSync(installerPath);
+    fs.mkdirSync(destPath, { recursive: true });
+    const items = fs.readdirSync(sourcePath);
+    for (const item of items) {
+      this.linkLibraries(
+        path.join(sourcePath, item),
+        path.join(destPath, item),
+      );
     }
-
-    linkLibraries(sourcePath, destPath) {
-        if (!fs.existsSync(sourcePath)) return;
-        if (fs.existsSync(destPath)) return;
-
-        try {
-            fs.symlinkSync(sourcePath, destPath);
-        } catch (err) {
-            this.copyRecursive(sourcePath, destPath);
-        }
-    }
-
-    copyRecursive(sourcePath, destPath) {
-        const stat = fs.statSync(sourcePath);
-        if (!stat.isDirectory()) {
-            fs.copyFileSync(sourcePath, destPath);
-            return;
-        }
-
-        fs.mkdirSync(destPath, { recursive: true });
-        const items = fs.readdirSync(sourcePath);
-        for (const item of items) {
-            this.linkLibraries(path.join(sourcePath, item), path.join(destPath, item));
-        }
-    }
+  }
 }
