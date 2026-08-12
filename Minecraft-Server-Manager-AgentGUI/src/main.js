@@ -1,5 +1,7 @@
 const { listen } = window.__TAURI__.event;
 const { invoke } = window.__TAURI__.core;
+const { check } = window.__TAURI_PLUGIN_UPDATER__ || {};
+
 
 const originalFetch = window.fetch;
 window.fetch = async (url, options = {}) => {
@@ -11,6 +13,7 @@ window.fetch = async (url, options = {}) => {
 
 const views = {
   loading: document.getElementById('view-loading'),
+  update: document.getElementById('view-update'),
   pin: document.getElementById('view-pin'),
   active: document.getElementById('view-active'),
   shutdown: document.getElementById('view-shutdown')
@@ -46,6 +49,33 @@ const renderAgentState = (state) => {
 
   if (state.status === 'shutting_down') {
     return views.shutdown.style.display = 'block';
+  }
+
+  if (state.status === 'kill-switch') {
+    document.getElementById('update-notes').innerText = state.notes || "Tu versión está obsoleta y ya no es segura.";
+    document.getElementById('btn-update-now').onclick = async () => {
+      const btn = document.getElementById('btn-update-now');
+      const progress = document.getElementById('update-progress');
+      btn.disabled = true;
+      progress.innerText = "Buscando actualización...";
+      
+      try {
+        const update = await check();
+        if (update) {
+          progress.innerText = "Descargando e instalando...";
+          await update.downloadAndInstall();
+          progress.innerText = "Instalado. Reiniciando...";
+          await invoke('plugin:updater|restart');
+        } else {
+          progress.innerText = "No se encontró parche automático.";
+          btn.disabled = false;
+        }
+      } catch (e) {
+        progress.innerText = "Error al actualizar: " + e.message;
+        btn.disabled = false;
+      }
+    };
+    return views.update.style.display = 'block';
   }
 };
 
@@ -92,7 +122,5 @@ if (btnRefreshPin) {
 
 
 renderAgentState({ status: 'loading' });
-
-const getDaemonUrl = async () => invoke('get_daemon_base_url').catch(() => 'http://127.0.0.1:45987');
 
 

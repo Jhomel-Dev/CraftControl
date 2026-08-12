@@ -185,3 +185,46 @@ export const wakeAgent = async (req, res) => {
     return res.status(500).json({ error: 'InternalServerError' });
   }
 };
+
+export const getUpdateInfo = async (req, res) => {
+  try {
+    const latest = process.env.AGENT_LATEST_VERSION || '1.0.0';
+    const minimum = process.env.AGENT_MIN_VERSION || '1.0.0';
+    const notes = process.env.AGENT_UPDATE_NOTES || 'Update available';
+
+    if (!process.env.AGENT_MIN_VERSION) console.warn("WARNING: AGENT_MIN_VERSION is not set in ENV!");
+
+    return res.status(200).json({ latest, minimum, notes });
+  } catch (error) {
+    return res.status(500).json({ error: 'InternalServerError' });
+  }
+};
+
+export const getLatestRelease = async (req, res) => {
+  try {
+    const latest = process.env.AGENT_LATEST_VERSION || '1.0.0';
+    const notes = process.env.AGENT_UPDATE_NOTES || 'Update available';
+    
+    // Fallbacks if not set, avoiding silent fails (UA-6 is somewhat handled by logging)
+    if (!process.env.AGENT_LATEST_VERSION) console.warn("WARNING: AGENT_LATEST_VERSION is not set in ENV!");
+
+    // Tauri v2 standard updater JSON schema
+    return res.status(200).json({
+      version: latest,
+      notes: notes,
+      pub_date: new Date().toISOString(),
+      platforms: {
+        "linux-x86_64": {
+          "url": `https://github.com/Jhomel-Dev/CraftControl/releases/download/v${latest}/CraftControl-Agent_${latest}_amd64.AppImage.tar.gz`,
+          "signature": process.env.AGENT_LINUX_SIGNATURE || "dW5kZWZpbmVk"
+        },
+        "windows-x86_64": {
+          "url": `https://github.com/Jhomel-Dev/CraftControl/releases/download/v${latest}/CraftControl-Agent_${latest}_x64-setup.nsis.zip`,
+          "signature": process.env.AGENT_WINDOWS_SIGNATURE || "dW5kZWZpbmVk"
+        }
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'InternalServerError' });
+  }
+};

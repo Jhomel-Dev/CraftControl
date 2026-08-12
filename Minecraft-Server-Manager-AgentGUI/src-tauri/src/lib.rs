@@ -15,6 +15,7 @@ pub fn run() {
     }
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_single_instance::init(handle_single_instance))
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_opener::init())
@@ -29,7 +30,10 @@ pub fn run() {
         .setup(|app| {
             tray::setup_system_tray(app)?;
             daemon::start_agent_polling_loop(app.handle().clone());
-            daemon::spawn_detached_agent(app.handle());
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                daemon::check_update_and_spawn(&app_handle).await;
+            });
             Ok(())
         })
         .on_window_event(handle_window_event)

@@ -74,6 +74,52 @@ pub fn spawn_detached_agent(app_handle: &AppHandle) {
         .inspect_err(|e| eprintln!("Failed to spawn agent process: {}", e));
 }
 
+async fn get_kill_switch_notes(app_handle: &AppHandle) -> Option<String> {
+    let api_url = if cfg!(debug_assertions) {
+        "https://craft-control-api-staging.onrender.com/api/agent/update-check"
+    } else {
+        "https://minecraft-server-pl80.onrender.com/api/agent/update-check"
+    };
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(3))
+        .build()
+        .unwrap_or_default();
+
+    let res = client.get(api_url).send().await.ok()?;
+    let json = res.json::<serde_json::Value>().await.ok()?;
+    let minimum = json["minimum"].as_str()?;
+
+    let current = app_handle.package_info().version.to_string();
+    let cur_ver = semver::Version::parse(&current).ok()?;
+    let min_ver = semver::Version::parse(minimum).ok()?;
+
+    if cur_ver >= min_ver {
+        return None;
+    }
+
+    Some(
+        json["notes"]
+            .as_str()
+            .unwrap_or("Actualización obligatoria")
+            .to_string(),
+    )
+}
+
+pub async fn check_update_and_spawn(app_handle: &AppHandle) {
+    if let Some(notes) = get_kill_switch_notes(app_handle).await {
+        let payload = serde_json::json!({
+            "status": "kill-switch",
+            "notes": notes
+        });
+        let _ = app_handle.emit("agent-state-changed", &payload.to_string());
+        println!("Kill-switch activated! Agent spawn aborted.");
+        return;
+    }
+
+    spawn_detached_agent(app_handle);
+}
+
 fn is_process_alive(pid: u32) -> bool {
     #[cfg(unix)]
     return std::process::Command::new("kill")
@@ -115,6 +161,11 @@ pub fn start_agent_polling_loop(app_handle: AppHandle) {
             }
 
             consecutive_failures += 1;
+
+            if consecutive_failures % 3 == 1 {
+                check_update_and_spawn(&app_handle).await;
+            }
+
             let wait_secs = get_offline_sleep_secs(&app_handle, was_online, consecutive_failures);
             tokio::time::sleep(Duration::from_secs(wait_secs)).await;
         }
@@ -122,14 +173,10 @@ pub fn start_agent_polling_loop(app_handle: AppHandle) {
 }
 
 fn get_offline_sleep_secs(
-    app_handle: &AppHandle,
+    _app_handle: &AppHandle,
     _was_online: bool,
     consecutive_failures: u32,
 ) -> u64 {
-    if consecutive_failures % 3 == 1 {
-        spawn_detached_agent(app_handle);
-    }
-
     (1u64 << (consecutive_failures.min(3) - 1)).min(5)
 }
 

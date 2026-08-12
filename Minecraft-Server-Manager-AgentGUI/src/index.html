@@ -15,6 +15,16 @@
       <div class="status">Buscando motor de sincronización...</div>
     </div>
 
+    <div id="view-update" style="display: none; text-align: center;">
+      <h2 style="color: var(--danger);">Actualización Obligatoria</h2>
+      <div class="status" id="update-notes">Tu versión está obsoleta.</div>
+      <button class="btn" id="btn-update-now" style="margin-top: 15px;">Descargar e Instalar</button>
+      <div id="update-progress" style="margin-top: 10px; font-size: 14px;"></div>
+      <div style="margin-top: 15px; font-size: 12px;">
+        <a href="https://github.com/Jhomel-Dev/CraftControl/releases/latest" target="_blank" style="color: var(--accent); text-decoration: none;">O descarga manualmente desde GitHub</a>
+      </div>
+    </div>
+
     <div id="view-pin">
       <div class="status">Ingresa este PIN en la web para vincular:</div>
       <div class="pin-box" id="pin-display">------</div>

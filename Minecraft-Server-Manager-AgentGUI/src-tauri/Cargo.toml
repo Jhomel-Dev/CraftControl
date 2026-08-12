@@ -28,6 +28,8 @@ dirs = "6.0.0"
 tauri-plugin-http = "2.5.9"
 reqwest = { version = "0.13.4", features = ["json"] }
 tokio = { version = "1.53.0", features = ["time"] }
+tauri-plugin-updater = "2.10.1"
+semver = "1.0.28"
 
 [profile.release]
 strip = false
