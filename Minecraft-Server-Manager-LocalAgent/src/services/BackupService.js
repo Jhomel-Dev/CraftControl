@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
-import AdmZip from 'adm-zip';
+import * as tar from 'tar';
 
 export default class BackupService {
     constructor(getNativeServerService) {
@@ -58,12 +58,13 @@ export default class BackupService {
     }
 
     async enforceRetentionPolicy(serverId, maxRetained) {
-        if (!maxRetained) return;
+        let max = parseInt(maxRetained, 10);
+        if (isNaN(max) || max < 1) max = 5;
         
         const backups = await this.listBackups(serverId);
-        if (backups.length <= maxRetained) return;
+        if (backups.length <= max) return;
 
-        const toDelete = backups.slice(maxRetained);
+        const toDelete = backups.slice(max);
         for (const backup of toDelete) {
             await this.deleteBackup(serverId, backup.name);
         }
@@ -80,23 +81,24 @@ export default class BackupService {
     }
 
     async createBackup(serverId, profile = 'full') {
+        const safeProfile = ['full', 'world', 'configs'].includes(profile) ? profile : 'full';
         const serverDir = this.getServerDir(serverId);
         const backupsDir = await this.getBackupsDir(serverId);
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const zipName = `backup-${profile}-${timestamp}.zip`;
-        const zipPath = path.join(backupsDir, zipName);
+        const fileName = `backup-${safeProfile}-${timestamp}.tar.gz`;
+        const filePath = path.join(backupsDir, fileName);
         
-        const validPaths = await this.getValidBackupPaths(serverDir, profile);
+        const validPaths = await this.getValidBackupPaths(serverDir, safeProfile);
         if (validPaths.length === 0) throw new Error("No valid files to backup");
 
         const isOnline = this.isServerOnline(serverId);
         
         try {
             await this.prepareServerForBackup(serverId, isOnline);
-            await this.compressFiles(serverDir, validPaths, zipPath);
-            return { success: true, file: zipName };
+            await this.compressFiles(serverDir, validPaths, filePath);
+            return { success: true, file: fileName };
         } catch (err) {
-            throw new Error("Failed to create zip backup.");
+            throw new Error("Failed to create backup archive.");
         } finally {
             await this.resumeServerAfterBackup(serverId, isOnline);
         }
@@ -153,24 +155,18 @@ export default class BackupService {
         } catch(e) {}
     }
 
-    async compressFiles(serverDir, paths, zipPath) {
-        const zip = new AdmZip();
-        for (const p of paths) {
-            const fullPath = path.join(serverDir, p);
-            const stat = await fs.stat(fullPath);
-            if (stat.isDirectory()) {
-                zip.addLocalFolder(fullPath, p);
-            } else {
-                zip.addLocalFile(fullPath);
-            }
-        }
-        zip.writeZip(zipPath);
+    async compressFiles(serverDir, paths, archivePath) {
+        await tar.c({
+            gzip: true,
+            file: archivePath,
+            cwd: serverDir
+        }, paths);
     }
 
     async listBackups(serverId) {
         const dir = await this.getBackupsDir(serverId);
         const files = await this.safeReadDir(dir);
-        const zips = files.filter(f => f.endsWith('.zip'));
+        const zips = files.filter(f => f.endsWith('.zip') || f.endsWith('.tar.gz'));
         
         const results = [];
         for (const file of zips) {
@@ -185,7 +181,9 @@ export default class BackupService {
     }
 
     async deleteBackup(serverId, fileName) {
-        if (!fileName.endsWith('.zip') || fileName.includes('/')) throw new Error("Invalid file");
+        if ((!fileName.endsWith('.zip') && !fileName.endsWith('.tar.gz')) || fileName.includes('/')) {
+            throw new Error("Invalid file");
+        }
         
         const dir = await this.getBackupsDir(serverId);
         const filePath = path.join(dir, fileName);

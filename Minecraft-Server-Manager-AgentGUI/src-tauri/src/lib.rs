@@ -23,7 +23,8 @@ pub fn run() {
             commands::request_shutdown,
             commands::request_refresh_pin,
             commands::request_unlink,
-            commands::get_daemon_base_url
+            commands::get_daemon_base_url,
+            commands::get_daemon_secret
         ])
         .setup(|app| {
             tray::setup_system_tray(app)?;

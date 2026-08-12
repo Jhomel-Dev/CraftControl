@@ -66,6 +66,24 @@ fn read_port_from_lockfile(app_data: &Path) -> Option<u16> {
     u16::try_from(port_val).ok()
 }
 
+fn read_string_from_lockfiles(app_handle: Option<&AppHandle>, key: &str) -> Option<String> {
+    get_agent_config_dirs(app_handle)
+        .into_iter()
+        .find_map(|dir| {
+            let content = fs::read_to_string(dir.join("daemon.lock")).ok()?;
+            let json: serde_json::Value = serde_json::from_str(&content).ok()?;
+            json.get(key)?.as_str().map(String::from)
+        })
+}
+
+pub fn read_daemon_secret(app_handle: Option<&AppHandle>) -> Option<String> {
+    read_string_from_lockfiles(app_handle, "secret")
+}
+
+pub fn read_daemon_pin(app_handle: Option<&AppHandle>) -> Option<String> {
+    read_string_from_lockfiles(app_handle, "pin")
+}
+
 fn read_port_from_env_file(app_data: &Path) -> Option<u16> {
     let env_path = app_data.join(".env");
     let content = fs::read_to_string(env_path).ok()?;
