@@ -22,7 +22,7 @@ export default function ServerOptionsPage({ params }) {
     whitelist: false,
     onlineMode: true,
     compatibilityMode: false,
-    memory: "2048"
+    memory: "2048M"
   });
 
   const [properties, setProperties] = useState({});

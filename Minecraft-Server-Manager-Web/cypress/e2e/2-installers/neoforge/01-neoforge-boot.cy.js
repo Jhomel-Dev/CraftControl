@@ -38,14 +38,10 @@ describe("Módulo 3: Creación de Servidor", () => {
     cy.get('[data-cy="wizard-server-name-input"]').type("Cypress Modular Server");
     cy.get('[data-cy="wizard-software-neoforge"]').click();
 
-    cy.wait(500);
-
-    cy.get('[data-cy="wizard-step1-next"]').click({ force: true });
+    cy.get('[data-cy="wizard-step1-next"]').should('not.be.disabled').click();
     cy.get("input[type='range']").invoke("val", 1).trigger("input", { force: true }).trigger("change", { force: true });
 
-    cy.wait(500);
-
-    cy.get('[data-cy="wizard-step2-next"]').click({ force: true });
+    cy.get('[data-cy="wizard-step2-next"]').should('not.be.disabled').click();
     cy.get('[data-cy="wizard-install-button"]').click();
     cy.get('[data-cy="server-status-text"]', { timeout: 180000 }).should(($el) => {
       expect($el.text()).to.match(/Desconectado|Offline|Apagado/i);

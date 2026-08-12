@@ -54,7 +54,45 @@ pub fn spawn_detached_agent(app_handle: &AppHandle) {
         cmd.creation_flags(0x00000008 | 0x08000000);
     }
 
-    let _ = cmd.spawn();
+    let pid = crate::config::read_daemon_pid(Some(app_handle)).unwrap_or(u32::MAX);
+    if is_process_alive(pid) {
+        println!(
+            "Agent process (PID {}) is already running, skipping spawn.",
+            pid
+        );
+        return;
+    }
+
+    let _ = cmd
+        .spawn()
+        .inspect(|child| {
+            println!(
+                "Agent process spawned successfully with PID: {}",
+                child.id()
+            )
+        })
+        .inspect_err(|e| eprintln!("Failed to spawn agent process: {}", e));
+}
+
+fn is_process_alive(pid: u32) -> bool {
+    #[cfg(unix)]
+    return std::process::Command::new("kill")
+        .arg("-0")
+        .arg(pid.to_string())
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+
+    #[cfg(windows)]
+    return std::process::Command::new("tasklist")
+        .arg("/FI")
+        .arg(format!("PID eq {}", pid))
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).contains(&pid.to_string()))
+        .unwrap_or(false);
+
+    #[cfg(not(any(unix, windows)))]
+    return false;
 }
 
 pub fn start_agent_polling_loop(app_handle: AppHandle) {
@@ -85,21 +123,27 @@ pub fn start_agent_polling_loop(app_handle: AppHandle) {
 
 fn get_offline_sleep_secs(
     app_handle: &AppHandle,
-    was_online: bool,
+    _was_online: bool,
     consecutive_failures: u32,
 ) -> u64 {
-    if was_online && consecutive_failures <= 3 {
+    if consecutive_failures % 3 == 1 {
         spawn_detached_agent(app_handle);
-        return 1u64 << consecutive_failures;
     }
-    5
+
+    (1u64 << (consecutive_failures.min(3) - 1)).min(5)
 }
 
 async fn poll_agent_status(app_handle: &AppHandle, client: &reqwest::Client) -> bool {
     let base_url = crate::config::get_agent_base_url(Some(app_handle));
     let status_url = format!("{}/status", base_url);
+    let secret = crate::config::read_daemon_secret(Some(app_handle)).unwrap_or_default();
 
-    let Ok(res) = client.get(&status_url).send().await else {
+    let Ok(res) = client
+        .get(&status_url)
+        .header("Authorization", format!("Bearer {}", secret))
+        .send()
+        .await
+    else {
         let _ = app_handle.emit("agent-state-changed", r#"{"status":"offline"}"#);
         return false;
     };
@@ -113,7 +157,15 @@ async fn poll_agent_status(app_handle: &AppHandle, client: &reqwest::Client) -> 
         return false;
     };
 
-    let _ = app_handle.emit("agent-state-changed", &json);
+    let mut json_val: serde_json::Value = serde_json::from_str(&json).unwrap_or_default();
+    if let Some(pin) = crate::config::read_daemon_pin(Some(app_handle)) {
+        json_val["pin"] = serde_json::Value::String(pin);
+    } else {
+        json_val["pin"] = serde_json::Value::Null;
+    }
+
+    let modified_json = json_val.to_string();
+    let _ = app_handle.emit("agent-state-changed", &modified_json);
     true
 }
 
@@ -123,7 +175,16 @@ pub async fn graceful_shutdown(app_handle: &AppHandle) {
         .timeout(Duration::from_secs(2))
         .build()
         .unwrap_or_default();
-    let _ = client.post(format!("{}/shutdown", base_url)).send().await;
+    let secret = crate::config::read_daemon_secret(Some(app_handle)).unwrap_or_default();
+    let res = client
+        .post(format!("{}/shutdown", base_url))
+        .header("Authorization", format!("Bearer {}", secret))
+        .send()
+        .await;
+    if res.is_ok_and(|r| !r.status().is_success()) {
+        return;
+    }
+
     tokio::time::sleep(Duration::from_millis(300)).await;
     crate::config::remove_daemon_lockfiles(Some(app_handle));
 }

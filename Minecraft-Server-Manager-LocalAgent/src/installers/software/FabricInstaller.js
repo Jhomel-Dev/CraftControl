@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
+import { spawnSync } from 'child_process';
 import { downloadFile } from '../../utils/httpUtils.js';
 
 export default class FabricInstaller {
@@ -58,8 +58,21 @@ export default class FabricInstaller {
         if (!fs.existsSync(fabricDir)) fs.mkdirSync(fabricDir, { recursive: true });
         
         const javaExe = await this.javaInstaller.ensureJavaIsInstalled(mcVer);
-        const loaderArg = loaderVer ? `-loader ${loaderVer}` : '';
-        execSync(`"${javaExe}" -jar "${installerPath}" server -mcversion ${mcVer} ${loaderArg} -downloadMinecraft`, { cwd: fabricDir });
+        
+        const args = ['-jar', installerPath, 'server', '-mcversion', mcVer];
+        if (loaderVer) {
+            args.push('-loader', loaderVer);
+        }
+        args.push('-downloadMinecraft');
+
+        const result = spawnSync(javaExe, args, { cwd: fabricDir, stdio: 'inherit' });
+        
+        if (result.error) {
+            throw new Error(`Failed to start Fabric installer: ${result.error.message}`);
+        }
+        if (result.status !== 0) {
+            throw new Error(`Fabric installer failed with exit code ${result.status}`);
+        }
         
         fs.unlinkSync(installerPath);
     }

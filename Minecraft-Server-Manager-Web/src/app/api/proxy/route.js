@@ -8,6 +8,24 @@ export async function GET(request) {
     return NextResponse.json({ error: 'URL is required' }, { status: 400 });
   }
 
+  const allowedHosts = [
+    'fill.papermc.io',
+    'api.papermc.io',
+    'files.minecraftforge.net',
+    'maven.minecraftforge.net',
+    'maven.neoforged.net',
+    'meta.fabricmc.net'
+  ];
+
+  try {
+    const parsedUrl = new URL(targetUrl);
+    if (!allowedHosts.includes(parsedUrl.hostname)) {
+      return NextResponse.json({ error: 'Host not allowed' }, { status: 403 });
+    }
+  } catch (e) {
+    return NextResponse.json({ error: 'Invalid URL' }, { status: 400 });
+  }
+
   try {
     const res = await fetch(targetUrl, {
       headers: {

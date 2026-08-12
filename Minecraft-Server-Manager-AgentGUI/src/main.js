@@ -1,6 +1,14 @@
 const { listen } = window.__TAURI__.event;
 const { invoke } = window.__TAURI__.core;
 
+const originalFetch = window.fetch;
+window.fetch = async (url, options = {}) => {
+  const secret = await invoke('get_daemon_secret').catch(() => '');
+  const headers = { ...options.headers };
+  if (secret) headers['Authorization'] = `Bearer ${secret}`;
+  return originalFetch(url, { ...options, headers });
+};
+
 const views = {
   loading: document.getElementById('view-loading'),
   pin: document.getElementById('view-pin'),
@@ -27,12 +35,8 @@ const renderAgentState = (state) => {
   }
 
   if (state.status === 'waiting_pin') {
-    if (state.pin) {
-      currentPin = state.pin;
-      pinDisplay.innerText = currentPin;
-    } else {
-      pinDisplay.innerText = "------";
-    }
+    currentPin = state.pin || "";
+    pinDisplay.innerText = state.pin || "------";
     return views.pin.style.display = 'block';
   }
 
@@ -76,7 +80,7 @@ if (btnRefreshPin) {
       btnRefreshPin.innerText = "Refrescar PIN";
       btnRefreshPin.disabled = false;
     });
-    // the UI will naturally reset when the daemon re-initializes and drops a new state event
+
     setTimeout(() => {
       btnRefreshPin.innerText = "Refrescar PIN";
       btnRefreshPin.disabled = false;
@@ -91,57 +95,4 @@ renderAgentState({ status: 'loading' });
 
 const getDaemonUrl = async () => invoke('get_daemon_base_url').catch(() => 'http://127.0.0.1:45987');
 
-window.switchToStaging = async () => {
-  try {
-    const baseUrl = await getDaemonUrl();
-    await fetch(`${baseUrl}/set-api`, {
-      method: 'POST',
-      body: JSON.stringify({ apiUrl: 'https://craft-control-api-staging.onrender.com' })
-    });
-    console.log('%c[Sistema] Cambiando al servidor de Staging. El agente se reiniciará...', 'color: #ff4a4a; font-size: 14px; font-weight: bold;');
-    await invoke('request_unlink');
-  } catch (e) {
-    console.error('Error al cambiar a Staging:', e);
-  }
-};
 
-window.switchToProduction = async () => {
-  try {
-    const baseUrl = await getDaemonUrl();
-    await fetch(`${baseUrl}/set-api`, {
-      method: 'POST',
-      body: JSON.stringify({ apiUrl: 'https://minecraft-server-pl80.onrender.com' })
-    });
-    console.log('%c[Sistema] Cambiando al servidor de Producción. El agente se reiniciará...', 'color: #ff4a4a; font-size: 14px; font-weight: bold;');
-    await invoke('request_unlink');
-  } catch (e) {
-    console.error('Error al cambiar a Producción:', e);
-  }
-};
-
-window.switchToLocal = async (port = 3000) => {
-  try {
-    const baseUrl = await getDaemonUrl();
-    const localUrl = `http://localhost:${port}`;
-    await fetch(`${baseUrl}/set-api`, {
-      method: 'POST',
-      body: JSON.stringify({ apiUrl: localUrl })
-    });
-    console.log(`%c[Sistema] Cambiando al servidor Local (${localUrl}). El agente se reiniciará...`, 'color: #ff4a4a; font-size: 14px; font-weight: bold;');
-    await invoke('request_unlink');
-  } catch (e) {
-    console.error('Error al cambiar a Local:', e);
-  }
-};
-
-window.checkServer = async () => {
-  try {
-    const baseUrl = await getDaemonUrl();
-    const res = await fetch(`${baseUrl}/status`);
-    const data = await res.json();
-    console.log(`%c[Sistema] El agente está conectado a: ${data.apiUrl || 'Desconocido'}`, 'color: #00ff00; font-size: 14px; font-weight: bold;');
-    return data.apiUrl;
-  } catch (e) {
-    console.error('El agente está apagado o no responde.');
-  }
-};

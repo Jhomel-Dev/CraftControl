@@ -9,6 +9,21 @@ const __dirname = path.dirname(__filename);
 
 let agentProcess;
 
+const killAgentGroup = () => {
+  if (agentProcess) {
+    try {
+      process.kill(-agentProcess.pid, 'SIGKILL');
+    } catch (e) {}
+    agentProcess = null;
+  }
+};
+
+process.on('exit', killAgentGroup);
+process.on('SIGINT', () => {
+  killAgentGroup();
+  process.exit();
+});
+
 export default defineConfig({
   e2e: {
     baseUrl: "http://localhost:3000",
@@ -26,7 +41,7 @@ export default defineConfig({
 
               const agentPath = path.resolve(__dirname, '../Minecraft-Server-Manager-LocalAgent/index.js');
               
-              agentProcess = spawn('node', [agentPath], { cwd: tmpDir });
+              agentProcess = spawn('node', [agentPath], { cwd: tmpDir, detached: true });
 
               const handleOutput = (data) => {
                 const str = data.toString();
@@ -50,15 +65,8 @@ export default defineConfig({
         },
         stopAgent() {
           return new Promise((resolve) => {
-            if (agentProcess) {
-              agentProcess.on('exit', () => {
-                agentProcess = null;
-                resolve(null);
-              });
-              agentProcess.kill();
-            } else {
-              resolve(null);
-            }
+            killAgentGroup();
+            resolve(null);
           });
         }
       });

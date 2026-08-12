@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
+import { spawnSync } from 'child_process';
 import { downloadFile } from '../../utils/httpUtils.js';
 import { isWindows } from '../../utils/osUtils.js';
 
@@ -56,7 +56,14 @@ export default class ForgeInstaller {
         if (!fs.existsSync(forgeDir)) fs.mkdirSync(forgeDir, { recursive: true });
         
         const javaExe = await this.javaInstaller.ensureJavaIsInstalled(mcVer);
-        execSync(`"${javaExe}" -jar "${installerPath}" --installServer`, { cwd: forgeDir, stdio: 'ignore' });
+        const result = spawnSync(javaExe, ['-jar', installerPath, '--installServer'], { cwd: forgeDir, stdio: 'ignore' });
+        
+        if (result.error) {
+            throw new Error(`Failed to start Forge installer: ${result.error.message}`);
+        }
+        if (result.status !== 0) {
+            throw new Error(`Forge installer failed with exit code ${result.status}`);
+        }
         
         fs.unlinkSync(installerPath);
     }

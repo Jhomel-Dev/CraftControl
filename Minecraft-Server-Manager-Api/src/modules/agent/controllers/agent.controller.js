@@ -8,7 +8,7 @@ const PAIRING_CODE_VALIDITY_MINUTES = 15;
 const generateRandomString = (length) => {
   let result = '';
   for (let i = 0; i < length; i++) {
-    result += ALPHANUMERIC_CHARS.charAt(Math.floor(Math.random() * ALPHANUMERIC_CHARS.length));
+    result += ALPHANUMERIC_CHARS.charAt(crypto.randomInt(0, ALPHANUMERIC_CHARS.length));
   }
   return result;
 };
@@ -103,7 +103,7 @@ export const checkAgentStatus = async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return res.status(404).json({ error: 'UserNotFound' });
     
-    const isOnline = agentHardwareMap.has(userId) || agentHardwareMap.has('LEGACY');
+    const isOnline = agentHardwareMap.has(userId);
     
     let status = 'OFFLINE';
     if (user.agentToken && isOnline) {
@@ -123,6 +123,7 @@ export const unlinkAgent = async (req, res) => {
     const io = req.app.get('io');
     if (io) {
       io.to(`agent-${userId}`).emit('AGENT_UNLINK');
+      io.in(`agent-${userId}`).disconnectSockets(true);
     }
     
     await prisma.user.update({
@@ -155,7 +156,8 @@ export const unlinkSelfAgent = async (req, res) => {
 
     const io = req.app.get('io');
     if (io) {
-      io.to(user.id).emit('AGENT_UNLINKED_EXPLICITLY');
+      io.to(`agent-${user.id}`).emit('AGENT_UNLINKED_EXPLICITLY');
+      io.in(`agent-${user.id}`).disconnectSockets(true);
     }
 
     return res.status(200).json({ success: true });

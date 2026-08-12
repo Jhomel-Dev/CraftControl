@@ -43,8 +43,7 @@ const authFetch = async (endpoint, options = {}) => {
         headers: { ...getHeaders(), ...options.headers }
       });
     } catch (err) {
-      
-      return new Promise(() => {}); 
+      throw new Error("Failed to refresh session");
     }
   }
 
@@ -86,8 +85,8 @@ export async function restartServer(id) {
   
   
   let isOffline = false;
-  for (let i = 0; i < 30; i++) { 
-    await new Promise(resolve => setTimeout(resolve, 1000));
+  for (let i = 0; i < 15; i++) { 
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
     try {
       const servers = await getMyServers();

@@ -53,62 +53,104 @@ export default class LocalDaemonController {
   }
 
   handleRequest(req, res) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    this._setCorsHeaders(req, res);
 
     if (req.method === 'OPTIONS') {
-      res.writeHead(200);
-      return res.end();
+      return this._sendResponse(res, 200);
     }
 
-    if (req.url === '/identity' && req.method === 'GET') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({
-        app: 'craftcontrol-agent',
-        identity: 'CraftControlAgent'
-      }));
+    if (!this._isAuthorizedRequest(req)) {
+      return this._sendResponse(res, 401, { success: false, error: 'Unauthorized' });
     }
 
-    if (req.url === '/status' && req.method === 'GET') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({
-        status: this.status,
-        pin: global.currentPairingPin || null,
-        apiUrl: EnvManager.getApiUrl()
-      }));
+    const routeHandler = this._getRouteHandler(req.method, req.url);
+    if (!routeHandler) {
+      return this._sendResponse(res, 404);
     }
 
-    if (req.url === '/unlink' && req.method === 'POST') {
-      if (this.onUnlinkCallback) this.onUnlinkCallback();
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ success: true }));
-    }
+    return routeHandler.call(this, req, res);
+  }
 
-    if (req.url === '/shutdown' && req.method === 'POST') {
-      this.status = 'shutting_down';
-      if (this.onShutdownCallback) this.onShutdownCallback();
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ success: true, message: 'Graceful shutdown initiated' }));
+  _setCorsHeaders(req, res) {
+    const origin = req.headers.origin || '';
+    const allowedOrigins = ['tauri://localhost', 'http://tauri.localhost', 'https://tauri.localhost'];
+    
+    if (allowedOrigins.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
     }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+  }
 
-    if (req.url === '/set-api' && req.method === 'POST') {
-      let body = '';
-      req.on('data', chunk => body += chunk);
-      req.on('end', () => {
-        try {
-          const { apiUrl } = JSON.parse(body);
-          if (apiUrl) EnvManager.updateApiUrl(apiUrl);
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: true }));
-        } catch (e) {
-          res.writeHead(400);
-          res.end(JSON.stringify({ success: false, error: e.message }));
-        }
-      });
-      return;
+  _isAuthorizedRequest(req) {
+    if (req.url === '/identity' && req.method === 'GET') return true;
+    const authHeader = req.headers.authorization;
+    const expectedSecret = EnvManager.getDaemonSecret();
+    return authHeader === `Bearer ${expectedSecret}`;
+  }
+
+  _getRouteHandler(method, url) {
+    const routes = {
+      'GET /identity': this._handleIdentity,
+      'GET /status': this._handleStatus,
+      'POST /unlink': this._handleUnlink,
+      'POST /shutdown': this._handleShutdown,
+      'POST /set-api': this._handleSetApi
+    };
+    return routes[`${method} ${url}`];
+  }
+
+  _sendResponse(res, statusCode, data = null) {
+    if (data) {
+      res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(data));
     }
+    res.writeHead(statusCode);
+    return res.end();
+  }
 
-    res.writeHead(404);
-    res.end();
+  _handleIdentity(req, res) {
+    return this._sendResponse(res, 200, {
+      app: 'craftcontrol-agent',
+      identity: 'CraftControlAgent'
+    });
+  }
+
+  _handleStatus(req, res) {
+    return this._sendResponse(res, 200, {
+      status: this.status,
+      apiUrl: EnvManager.getApiUrl()
+    });
+  }
+
+  _handleUnlink(req, res) {
+    if (this.onUnlinkCallback) this.onUnlinkCallback();
+    return this._sendResponse(res, 200, { success: true });
+  }
+
+  _handleShutdown(req, res) {
+    this.status = 'shutting_down';
+    if (this.onShutdownCallback) this.onShutdownCallback();
+    return this._sendResponse(res, 200, { 
+      success: true, 
+      message: 'Graceful shutdown initiated' 
+    });
+  }
+
+  _handleSetApi(req, res) {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => this._processSetApiBody(body, res));
+  }
+
+  _processSetApiBody(body, res) {
+    try {
+      const { apiUrl } = JSON.parse(body);
+      if (apiUrl) EnvManager.updateApiUrl(apiUrl);
+      return this._sendResponse(res, 200, { success: true });
+    } catch (e) {
+      return this._sendResponse(res, 400, { success: false, error: e.message });
+    }
   }
 }
+

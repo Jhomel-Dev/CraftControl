@@ -51,13 +51,13 @@ export default class ServerService {
     return prisma.server.update({
       where: { id: serverId },
       data: {
-        maxPlayers: maxPlayers !== undefined ? Number(maxPlayers) : server.maxPlayers,
-        whitelist: whitelist !== undefined ? Boolean(whitelist) : server.whitelist,
-        onlineMode: onlineMode !== undefined ? Boolean(onlineMode) : server.onlineMode,
+        maxPlayers: maxPlayers !== undefined ? maxPlayers : server.maxPlayers,
+        whitelist: whitelist !== undefined ? whitelist : server.whitelist,
+        onlineMode: onlineMode !== undefined ? onlineMode : server.onlineMode,
         version: version !== undefined ? version : server.version,
         type: type !== undefined ? type : server.type,
         memory: memory !== undefined ? memory : server.memory,
-        compatibilityMode: compatibilityMode !== undefined ? Boolean(compatibilityMode) : server.compatibilityMode,
+        compatibilityMode: compatibilityMode !== undefined ? compatibilityMode : server.compatibilityMode,
         customDomain: customDomain !== undefined ? customDomain : server.customDomain,
         tunnelSecret: tunnelSecret !== undefined ? tunnelSecret : server.tunnelSecret,
       }
@@ -171,12 +171,12 @@ export default class ServerService {
       compatibilityMode: server.compatibilityMode
     };
 
-    this.io.to(`agent-${server.userId}`).to('agent-global').emit('START_SERVER', config);
+    this.io.to(`agent-${server.userId}`).emit('START_SERVER', config);
   }
 
   emitStopCommandToAgent(server) {
     if (!this.io) throw new Error('WebSocket instance not configured');
-    this.io.to(`agent-${server.userId}`).to('agent-global').emit('STOP_SERVER', { id: server.id });
+    this.io.to(`agent-${server.userId}`).emit('STOP_SERVER', { id: server.id });
   }
 
   async executeCommand(serverId, userId, command) {
@@ -190,7 +190,7 @@ export default class ServerService {
     }
 
     if (!this.io) throw new Error('WebSocket instance not configured');
-    this.io.to(`agent-${server.userId}`).to('agent-global').emit('SEND_COMMAND', command);
+    this.io.to(`agent-${server.userId}`).emit('SEND_COMMAND', { serverId, command });
 
     return { success: true, message: 'Command sent' };
   }

@@ -130,6 +130,16 @@ export default function FilesPage({ params }) {
     try {
       for (let f = 0; f < files.length; f++) {
         const file = files[f];
+        
+        if (file.name.includes('..') || file.name.includes('/')) {
+          toast(`${file.name} tiene un nombre inválido.`, "error");
+          continue;
+        }
+        if (file.size > 500 * 1024 * 1024) { 
+          toast(`${file.name} excede el límite de 500MB.`, "error");
+          continue;
+        }
+
         setUploadingText(`Subiendo ${f + 1} de ${files.length}...`);
         
         const totalChunks = Math.ceil(file.size / CHUNK_SIZE);

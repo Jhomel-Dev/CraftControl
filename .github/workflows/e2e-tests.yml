@@ -70,6 +70,7 @@ jobs:
           CYPRESS_BASE_URL: 'http://localhost:3000'
           DATABASE_URL: 'postgres://craftcontrol_test:craftcontrol_test@localhost:5432/craftcontrol_test'
           JWT_SECRET: 'test_secret_key'
+          JWT_REFRESH_SECRET: 'test_refresh_secret_key'
 
       - name: Upload Cypress Artifacts
         uses: actions/upload-artifact@v4

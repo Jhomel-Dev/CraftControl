@@ -3,20 +3,13 @@ import { Server } from "socket.io";
 import app from "./index.js"; 
 import { handleSocketEvents } from "./modules/agent/gateways/agent.gateway.js";
 import dotenv from "dotenv"
-import rateLimit from "express-rate-limit";
-import prisma from "./core/database/prisma.client.js";
+
 
 dotenv.config();
 
 const httpServer = createServer(app);
 
-const apiLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000,
-  max: process.env.NODE_ENV === 'production' ? 300 : 10000, 
-  message: { error: 'Too many requests. You have exceeded the limit of 300 per minute. Please wait.' }
-});
 
-app.use('/api/', apiLimiter);
 
 const io = new Server(httpServer, {
     cors: {
@@ -36,14 +29,7 @@ app.set('io', io);
 let port = parseInt(process.env.PORT) || 4000;
 
 const startServer = async (currentPort) => {
-    try {
-        await prisma.server.updateMany({
-            data: { status: 'OFFLINE', tunnelIp: null }
-        });
-        console.log('[System] Servers reset to OFFLINE (Cold Start fix).');
-    } catch (e) {
-        console.error('Error resetting servers state:', e);
-    }
+
 
     httpServer.listen(currentPort, () => {
         console.log(`Server HTTP & Socket.io running on port: ${currentPort}`);

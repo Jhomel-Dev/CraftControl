@@ -92,7 +92,8 @@ export default class AuthService {
   async refreshToken(token) {
     if (!token) throw new Error('Refresh token missing');
     
-    const secret = process.env.JWT_REFRESH_SECRET || 'refresh-secret-fallback';
+    const secret = process.env.JWT_REFRESH_SECRET;
+    if (!secret) throw new Error('JWT_REFRESH_SECRET is not configured');
     const decoded = jwt.verify(token, secret);
     
     const user = await prisma.user.findUnique({ where: { id: decoded.id } });
@@ -151,7 +152,8 @@ export default class AuthService {
 
   async generateTokens(user, rotateRefresh = true) {
     const secret = process.env.JWT_SECRET;
-    const refreshSecret = process.env.JWT_REFRESH_SECRET || 'refresh-secret-fallback';
+    const refreshSecret = process.env.JWT_REFRESH_SECRET;
+    if (!refreshSecret) throw new Error('JWT_REFRESH_SECRET is not configured');
     
     if (!secret) throw new Error('JWT_SECRET is not configured');
     

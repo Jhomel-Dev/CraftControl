@@ -52,14 +52,16 @@ export function ModList({ serverId, mode = "mods" }) {
       try {
         const metaRes = await fsOperation(serverId, { action: "read", filePath: "/mods-metadata.json" });
         if (metaRes && metaRes.content) {
-          const parsed = JSON.parse(metaRes.content);
-          setModMetadata(parsed);
-          
-          const ids = new Set();
-          Object.values(parsed).forEach(m => {
-            if (m.project_id) ids.add(m.project_id);
-          });
-          setInstalledProjects(ids);
+          try {
+            const parsed = JSON.parse(metaRes.content);
+            setModMetadata(parsed);
+            
+            const ids = new Set();
+            Object.values(parsed).forEach(m => {
+              if (m.project_id) ids.add(m.project_id);
+            });
+            setInstalledProjects(ids);
+          } catch (e) {}
         }
       } catch (e) {
       }
@@ -117,7 +119,18 @@ export function ModList({ serverId, mode = "mods" }) {
     if (files.length === 0) return;
 
     
-    const validFiles = files.filter(f => f.name.endsWith('.jar') || f.name.endsWith('.zip'));
+    const validFiles = files.filter(f => {
+      if (!f.name.endsWith(".jar") && !f.name.endsWith(".zip")) return false;
+      if (f.name.includes('..') || f.name.includes('/')) {
+        toast(`${f.name} tiene un nombre inválido.`, "error");
+        return false;
+      }
+      if (f.size > 200 * 1024 * 1024) { 
+        toast(`${f.name} excede el límite de 200MB.`, "error");
+        return false;
+      }
+      return true;
+    });
     
     if (validFiles.length === 0) {
       toast(t("invalidFileExtension"), "warning");
@@ -209,7 +222,7 @@ export function ModList({ serverId, mode = "mods" }) {
         let meta = {};
         const metaRes = await fsOperation(serverId, { action: "read", filePath: "/mods-metadata.json" });
         if (metaRes && metaRes.content) {
-          meta = JSON.parse(metaRes.content);
+          try { meta = JSON.parse(metaRes.content); } catch(e) {}
           if (meta[filename]) {
             delete meta[filename];
             await fsOperation(serverId, { 
@@ -287,7 +300,7 @@ export function ModList({ serverId, mode = "mods" }) {
         let meta = {};
         try {
           const metaRes = await fsOperation(serverId, { action: "read", filePath: "/mods-metadata.json" });
-          if (metaRes && metaRes.content) meta = JSON.parse(metaRes.content);
+          if (metaRes && metaRes.content) { try { meta = JSON.parse(metaRes.content); } catch (e) {} }
         } catch (e) {}
         
         meta[file.filename] = {

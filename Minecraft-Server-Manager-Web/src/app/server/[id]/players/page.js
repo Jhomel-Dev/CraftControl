@@ -44,9 +44,10 @@ export default function PlayersPage({ params }) {
       const bansRes = await fsOperation(serverId, { action: "read", filePath: "banned-players.json" }).catch(() => ({ content: "[]" }));
       const whitelistRes = await fsOperation(serverId, { action: "read", filePath: "whitelist.json" }).catch(() => ({ content: "[]" }));
 
-      const ops = JSON.parse(opsRes.content || "[]");
-      const bans = JSON.parse(bansRes.content || "[]");
-      const whitelist = JSON.parse(whitelistRes.content || "[]");
+      let ops = [], bans = [], whitelist = [];
+      try { ops = JSON.parse(opsRes.content || "[]"); } catch (e) {}
+      try { bans = JSON.parse(bansRes.content || "[]"); } catch (e) {}
+      try { whitelist = JSON.parse(whitelistRes.content || "[]"); } catch (e) {}
 
       const opUuids = ops.map(op => op.uuid);
       const banUuids = bans.map(ban => ban.uuid);
@@ -77,7 +78,12 @@ export default function PlayersPage({ params }) {
       let whitelist = [];
       try {
         const fileRes = await fsOperation(serverId, { action: "read", filePath: "whitelist.json" });
-        if (fileRes && fileRes.content) whitelist = JSON.parse(fileRes.content);
+        if (fileRes && fileRes.content) {
+          try {
+            setWhitelistUsers(JSON.parse(fileRes.content));
+            whitelist = JSON.parse(fileRes.content);
+          } catch (e) { console.error("Error al cargar whitelist", e); }
+        }
       } catch (e) {}
 
       if (action === "remove") {
@@ -113,7 +119,8 @@ export default function PlayersPage({ params }) {
   const handleOfflineOp = async (action, playerName) => {
     try {
       const res = await fsOperation(serverId, { action: "read", filePath: "ops.json" }).catch(() => ({ content: "[]" }));
-      let ops = JSON.parse(res.content || "[]");
+      let ops = [];
+      try { ops = JSON.parse(res.content || "[]"); } catch (e) {}
 
       if (action === "remove") {
         ops = ops.filter(p => p.name.toLowerCase() !== playerName.toLowerCase());
@@ -142,7 +149,8 @@ export default function PlayersPage({ params }) {
   const handleOfflineBan = async (action, playerName) => {
     try {
       const res = await fsOperation(serverId, { action: "read", filePath: "banned-players.json" }).catch(() => ({ content: "[]" }));
-      let bans = JSON.parse(res.content || "[]");
+      let bans = [];
+      try { bans = JSON.parse(res.content || "[]"); } catch (e) {}
 
       if (action === "remove") {
         bans = bans.filter(p => p.name.toLowerCase() !== playerName.toLowerCase());

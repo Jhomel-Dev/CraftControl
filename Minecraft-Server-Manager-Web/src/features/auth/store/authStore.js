@@ -7,7 +7,13 @@ export const useAuthStore = create(
       user: null,
       isAuthenticated: false,
       setUser: (user) => set({ user, isAuthenticated: !!user }),
-      logout: () => {
+      logout: async () => {
+        try {
+          await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/auth/logout`, {
+            method: 'POST',
+            credentials: 'include'
+          });
+        } catch(e) {}
         localStorage.removeItem("accessToken");
         set({ user: null, isAuthenticated: false });
       },

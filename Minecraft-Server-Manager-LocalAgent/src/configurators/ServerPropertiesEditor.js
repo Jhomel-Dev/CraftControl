@@ -48,16 +48,12 @@ export default class ServerPropertiesEditor {
         const memoryArgXmx = `-Xmx${memString}`;
         const memoryArgXms = `-Xms${memString}`;
         
-        let spawnArgs = [memoryArgXms, memoryArgXmx, '-XX:+AlwaysPreTouch'];
-
         if (softwareConfig.type === 'jar') {
-            spawnArgs.push('-jar', softwareConfig.path, 'nogui');
-            return spawnArgs;
+            return [memoryArgXms, memoryArgXmx, '-XX:+AlwaysPreTouch', '-jar', softwareConfig.path, 'nogui'];
         } 
         
         this.writeUserJvmArgs(memoryArgXms, memoryArgXmx);
-        spawnArgs.push(...softwareConfig.args, 'nogui');
-        return spawnArgs;
+        return [...softwareConfig.args, 'nogui'];
     }
 
     getMemoryString(memory) {
@@ -74,7 +70,13 @@ export default class ServerPropertiesEditor {
 
     writeUserJvmArgs(xms, xmx) {
         const userJvmArgsFile = path.join(this.dataDir, 'user_jvm_args.txt');
-        if (fs.existsSync(userJvmArgsFile)) return;
-        fs.writeFileSync(userJvmArgsFile, `${xms}\n${xmx}\n-XX:+AlwaysPreTouch\n`);
+        if (fs.existsSync(userJvmArgsFile)) {
+            const content = fs.readFileSync(userJvmArgsFile, 'utf8');
+            const lines = content.split('\n').filter(line => !line.trim().startsWith('-Xms') && !line.trim().startsWith('-Xmx'));
+            lines.unshift(xms, xmx);
+            fs.writeFileSync(userJvmArgsFile, lines.join('\n'));
+        } else {
+            fs.writeFileSync(userJvmArgsFile, `${xms}\n${xmx}\n-XX:+AlwaysPreTouch\n`);
+        }
     }
 }
