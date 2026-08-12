@@ -28,7 +28,6 @@ app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
-    if (origin.endsWith('.vercel.app')) return callback(null, true);
 
     callback(new Error('Not allowed by CORS'));
   },
@@ -46,8 +45,16 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: process.env.NODE_ENV === 'production' ? 300 : 10000,
+  message: { error: 'Too many requests. You have exceeded the limit of 300 per minute. Please wait.' }
+});
+app.use('/api/', apiLimiter);
+
 app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/google', authLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/servers', serverRoutes);
 app.use('/api/versions', versionRoutes);

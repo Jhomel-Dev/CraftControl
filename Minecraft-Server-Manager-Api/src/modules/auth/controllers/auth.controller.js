@@ -127,8 +127,7 @@ export default class AuthController {
     }
     
     return res.status(500).json({ 
-      error: error.message || 'Internal server error',
-      details: error.stack 
+      error: 'Failed to complete registration'
     });
   }
 }
