@@ -41,7 +41,11 @@ export default defineConfig({
 
               const agentPath = path.resolve(__dirname, '../Minecraft-Server-Manager-LocalAgent/index.js');
               
-              agentProcess = spawn('node', [agentPath], { cwd: tmpDir, detached: true });
+              agentProcess = spawn('node', [agentPath], { 
+                cwd: tmpDir, 
+                detached: true,
+                env: { ...process.env, AGENT_ENV_PATH: path.join(tmpDir, '.env') }
+              });
 
               const handleOutput = (data) => {
                 const str = data.toString();

@@ -24,7 +24,7 @@ if (!fs.existsSync(appDataDir)) {
 }
 
 const DEFAULT_API_URL = "https://minecraft-server-pl80.onrender.com";
-const ENV_PATH = path.join(appDataDir, ".env");
+const ENV_PATH = process.env.AGENT_ENV_PATH || path.join(appDataDir, ".env");
 const LOCK_PATH = path.join(appDataDir, "daemon.lock");
 
 export default class EnvManager {
