@@ -55,6 +55,9 @@ const start = async () => {
       process.exit(0);
     };
 
+    // EXCEPCIÓN DE REGLA: No borrar. Estos eventos (SIGINT/SIGTERM) interceptan el Ctrl+C o cierres abruptos
+    // para ejecutar el shutdownSafely y desconectar los WebSockets antes de que el proceso muera.
+    // Esto previene que el agente quede como "zombi" o deje conexiones "fantasma" en la nube.
     process.on("SIGINT", shutdownSafely);
     process.on("SIGTERM", shutdownSafely);
     process.on("uncaughtException", async (err) => {

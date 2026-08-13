@@ -16,7 +16,9 @@ export default async function RootLayout({ children }) {
 
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body className="antialiased min-h-screen">
+      <head>
+      </head>
+      <body className="antialiased min-h-screen" suppressHydrationWarning>
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <GoogleAuthProvider>

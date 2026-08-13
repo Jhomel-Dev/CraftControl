@@ -1,10 +1,11 @@
 const originalFetch = window.fetch;
 window.fetch = async (url, options = {}) => {
+  const urlString = typeof url === "string" ? url : (url?.url || url?.href || String(url));
+
   if (
-    typeof url === "string" &&
-    (url.includes("ipc.localhost") ||
-      url.startsWith("tauri://") ||
-      url.startsWith("ipc://"))
+    urlString.includes("ipc.localhost") ||
+    urlString.startsWith("tauri://") ||
+    urlString.startsWith("ipc://")
   ) {
     return originalFetch(url, options);
   }
@@ -85,7 +86,7 @@ const renderAgentState = (state) => {
           progress.innerText = "Descargando e instalando...";
           await update.downloadAndInstall();
           progress.innerText = "Instalado. Reiniciando...";
-          await invoke("plugin:updater|restart");
+          await window.__TAURI__.core.invoke("plugin:updater|restart");
         } else {
           progress.innerText = "No se encontró parche automático.";
           btn.disabled = false;
@@ -133,7 +134,9 @@ btnUnlink.addEventListener("click", () => {
 import('./debugTools.js').catch(() => {});
 
 btnShutdown.addEventListener("click", () => {
-  invoke("request_shutdown").catch(() => {});
+  if (window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke) {
+    window.__TAURI__.core.invoke("request_shutdown").catch(() => {});
+  }
 });
 
 const btnRefreshPin = document.getElementById("btnRefreshPin");
@@ -141,10 +144,12 @@ if (btnRefreshPin) {
   btnRefreshPin.addEventListener("click", () => {
     btnRefreshPin.innerText = "Refrescando...";
     btnRefreshPin.disabled = true;
-    invoke("request_refresh_pin").catch(() => {
-      btnRefreshPin.innerText = "Refrescar PIN";
-      btnRefreshPin.disabled = false;
-    });
+    if (window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke) {
+      window.__TAURI__.core.invoke("request_refresh_pin").catch(() => {
+        btnRefreshPin.innerText = "Refrescar PIN";
+        btnRefreshPin.disabled = false;
+      });
+    }
 
     setTimeout(() => {
       btnRefreshPin.innerText = "Refrescar PIN";

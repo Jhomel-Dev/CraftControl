@@ -9,7 +9,7 @@ export function ThemeToggle() {
 
   useEffect(() => setMounted(true), []);
 
-  if (!mounted) return <div className="w-[60px] h-8 rounded-blocky bg-surface-border animate-pulse border-2 border-transparent" />;
+  if (!mounted) return <div suppressHydrationWarning className="w-[60px] h-8 rounded-blocky bg-surface-border animate-pulse border-2 border-transparent" />;
 
   const isDark = theme === "dark";
 
@@ -22,13 +22,13 @@ export function ThemeToggle() {
       title="Alternar Tema"
     >
       {}
-      <div className="absolute w-full flex justify-between px-1.5 z-0 pointer-events-none">
+      <div suppressHydrationWarning className="absolute w-full flex justify-between px-1.5 z-0 pointer-events-none">
         <Sun className={`w-4 h-4 transition-opacity ${isDark ? "opacity-30" : "opacity-0"}`} />
         <Moon className={`w-4 h-4 transition-opacity ${isDark ? "opacity-0" : "opacity-30"}`} />
       </div>
 
       {}
-      <div
+      <div suppressHydrationWarning
         className={`absolute w-6 h-6 rounded flex items-center justify-center transition-all duration-300 z-10 shadow-sm ${
           isDark 
             ? "translate-x-[30px] bg-primary text-white" 
