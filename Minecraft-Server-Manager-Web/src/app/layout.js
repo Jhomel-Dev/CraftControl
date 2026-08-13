@@ -17,27 +17,6 @@ export default async function RootLayout({ children }) {
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
-        {process.env.NODE_ENV === 'development' && (
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `
-                if (typeof window !== 'undefined') {
-                  const observer = new MutationObserver((mutations) => {
-                    mutations.forEach((m) => {
-                      if (m.type === 'attributes' && m.attributeName === 'bis_skin_checked') {
-                        m.target.removeAttribute('bis_skin_checked');
-                      }
-                      if (m.type === 'attributes' && m.attributeName === 'bis_register') {
-                        m.target.removeAttribute('bis_register');
-                      }
-                    });
-                  });
-                  observer.observe(document.documentElement, { attributes: true, subtree: true });
-                }
-              `,
-            }}
-          />
-        )}
       </head>
       <body className="antialiased min-h-screen" suppressHydrationWarning>
         <NextIntlClientProvider messages={messages}>
