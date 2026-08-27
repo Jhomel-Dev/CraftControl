@@ -1,4 +1,6 @@
 import http from "http";
+import os from "os";
+import fs from "fs/promises";
 import EnvManager from "../config/EnvManager.js";
 import SmartBootService from "../services/SmartBootService.js";
 
@@ -84,7 +86,11 @@ export default class LocalDaemonController {
       "https://tauri.localhost",
     ];
 
-    if (allowedOrigins.includes(origin) || origin.startsWith("http://127.0.0.1:") || origin.startsWith("http://localhost:")) {
+    if (
+      allowedOrigins.includes(origin) ||
+      origin.startsWith("http://127.0.0.1:") ||
+      origin.startsWith("http://localhost:")
+    ) {
       res.setHeader("Access-Control-Allow-Origin", origin);
     }
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -105,6 +111,7 @@ export default class LocalDaemonController {
     const routes = {
       "GET /identity": this._handleIdentity,
       "GET /status": this._handleStatus,
+      "GET /health": this._handleHealth.bind(this),
       "POST /unlink": this._handleUnlink,
       "POST /shutdown": this._handleShutdown,
       "POST /set-api": this._handleSetApi,
@@ -132,6 +139,33 @@ export default class LocalDaemonController {
     return this._sendResponse(res, 200, {
       status: this.status,
       apiUrl: EnvManager.getApiUrl(),
+    });
+  }
+
+  async _handleHealth(req, res) {
+    const freeMem = os.freemem();
+    const hasMemory = freeMem > 1024 * 1024 * 100; // >100MB
+
+    let canExecute = true;
+    try {
+      // Just check if we can read the home directory, which indicates fs permissions are healthy
+      await fs.access(os.homedir());
+    } catch (e) {
+      canExecute = false;
+    }
+
+    if (!hasMemory || !canExecute) {
+      return this._sendResponse(res, 503, {
+        status: "error",
+        freeMemory: freeMem,
+        canExecute,
+      });
+    }
+
+    return this._sendResponse(res, 200, {
+      status: "ok",
+      freeMemory: freeMem,
+      canExecute,
     });
   }
 

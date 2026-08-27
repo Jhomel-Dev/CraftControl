@@ -1,6 +1,7 @@
 import { io } from "socket.io-client";
 import EventEmitter from "events";
 import os from "os";
+import Envelope from "../utils/Envelope.js";
 
 export default class ConnectionService extends EventEmitter {
   constructor(apiUrl, agentToken, isHibernating = false) {
@@ -35,27 +36,18 @@ export default class ConnectionService extends EventEmitter {
   attachSocketListeners() {
     this.socket.on("connect", () => {
       this.emit("connected");
-      this.socket.emit("AGENT_INFO", {
-        totalMem: os.totalmem(),
-        freeMem: os.freemem(),
-        cpus: os.cpus().length,
-        status: this.isHibernating ? "HIBERNATING" : "ACTIVE",
-      });
+      this.socket.emit(
+        "ENVELOPE",
+        Envelope.create("AGENT_INFO", {
+          totalMem: os.totalmem(),
+          freeMem: os.freemem(),
+          cpus: os.cpus().length,
+          status: this.isHibernating ? "HIBERNATING" : "ACTIVE",
+        }),
+      );
     });
     this.socket.on("disconnect", () => this.emit("disconnected"));
     this.socket.on("connect_error", (err) => this.emit("error", err));
-
-    this.socket.on("START_SERVER", (config) =>
-      this.emit("command_start", config),
-    );
-    this.socket.on("STOP_SERVER", (payload) =>
-      this.emit("command_stop", payload),
-    );
-    this.socket.on("DELETE_SERVER", (payload) =>
-      this.emit("delete_server", payload),
-    );
-    this.socket.on("SEND_COMMAND", (cmd) => this.emit("server_command", cmd));
-    this.socket.on("AGENT_UNLINK", () => this.emit("AGENT_UNLINK"));
     this.socket.on("AGENT_HIBERNATE", () => {
       this.isHibernating = true;
       this.emit("AGENT_HIBERNATE");
@@ -65,50 +57,52 @@ export default class ConnectionService extends EventEmitter {
       this.emit("AGENT_WAKE");
     });
 
-    this.socket.on("FS_OPERATION", (payload, callback) => {
-      this.emit("fs_operation", payload, callback);
-    });
+    const eventMap = {
+      START_SERVER: "command_start",
+      STOP_SERVER: "command_stop",
+      DELETE_SERVER: "delete_server",
+      SEND_COMMAND: "server_command",
+      AGENT_UNLINK: "AGENT_UNLINK",
+      FS_OPERATION: "fs_operation",
+      get_player_stats: "get_player_stats",
+      list_backups: "list_backups",
+      create_backup: "create_backup",
+      delete_backup: "delete_backup",
+    };
 
-    this.socket.on("get_player_stats", (payload, callback) => {
-      this.emit("get_player_stats", payload, callback);
-    });
-
-    this.socket.on("list_backups", (payload, callback) => {
-      this.emit("list_backups", payload, callback);
-    });
-
-    this.socket.on("create_backup", (payload, callback) => {
-      this.emit("create_backup", payload, callback);
-    });
-
-    this.socket.on("delete_backup", (payload, callback) => {
-      this.emit("delete_backup", payload, callback);
-    });
+    for (const [socketEvent, localEvent] of Object.entries(eventMap)) {
+      this.socket.on(socketEvent, (payload, callback) => {
+        this.emit(localEvent, payload, callback);
+      });
+    }
   }
 
   sendTelemetry(stats) {
     if (!this.verifyConnection()) return;
-    this.socket.emit("TELEMETRY_UPDATE", stats);
+    this.socket.emit("ENVELOPE", Envelope.create("TELEMETRY_UPDATE", stats));
   }
 
   sendLog(logLine) {
     if (!this.verifyConnection()) return;
-    this.socket.emit("SERVER_LOG", logLine);
+    this.socket.emit("ENVELOPE", Envelope.create("SERVER_LOG", logLine));
   }
 
   sendTunnelInfo(info) {
     if (!this.verifyConnection()) return;
-    this.socket.emit("TUNNEL_INFO", info);
+    this.socket.emit("ENVELOPE", Envelope.create("TUNNEL_INFO", info));
   }
 
   sendStateUpdate(payload) {
     if (!this.verifyConnection()) return;
-    this.socket.emit("STATUS_UPDATE", payload);
+    this.socket.emit("ENVELOPE", Envelope.create("STATUS_UPDATE", payload));
   }
 
   sendAgentStatus(status) {
     if (!this.verifyConnection()) return;
-    this.socket.emit("AGENT_STATUS_ACK", { status });
+    this.socket.emit(
+      "ENVELOPE",
+      Envelope.create("AGENT_STATUS_ACK", { status }),
+    );
   }
 
   verifyConnection() {

@@ -1,17 +1,23 @@
-import ServerService from '../services/server.service.js';
-import path from 'path';
-import os from 'os';
-import fs from 'fs';
-import { z } from 'zod';
-import prisma from '../../../core/database/prisma.client.js';
-import { agentHardwareMap } from '../../agent/gateways/agent.gateway.js';
+import ServerService from "../services/server.service.js";
+import path from "path";
+import os from "os";
+import fs from "fs";
+import { z } from "zod";
+import prisma from "../../../core/database/prisma.client.js";
+import { agentHardwareMap } from "../../agent/gateways/agent.gateway.js";
 
 const createServerSchema = z.object({
-  name: z.string().min(3).max(50).regex(/^[a-zA-Z0-9_\- ]+$/, 'Invalid name'),
+  name: z
+    .string()
+    .min(3)
+    .max(50)
+    .regex(/^[a-zA-Z0-9_\- ]+$/, "Invalid name"),
   type: z.string(),
   version: z.string(),
-  memory: z.string().regex(/^\d{1,4}[MG]$/, 'Invalid RAM format (e.g. 4G or 4096M)'),
-  compatibilityMode: z.boolean().optional().default(false)
+  memory: z
+    .string()
+    .regex(/^\d{1,4}[MG]$/, "Invalid RAM format (e.g. 4G or 4096M)"),
+  compatibilityMode: z.boolean().optional().default(false),
 });
 
 const updateSettingsSchema = z.object({
@@ -20,30 +26,44 @@ const updateSettingsSchema = z.object({
   onlineMode: z.boolean().optional(),
   version: z.string().optional(),
   type: z.string().optional(),
-  memory: z.string().regex(/^\d{1,4}[MG]$/, 'Invalid RAM format (e.g. 4G or 4096M)').optional(),
+  memory: z
+    .string()
+    .regex(/^\d{1,4}[MG]$/, "Invalid RAM format (e.g. 4G or 4096M)")
+    .optional(),
   compatibilityMode: z.boolean().optional(),
   customDomain: z.string().max(255).optional(),
-  tunnelSecret: z.string().max(100).optional()
+  tunnelSecret: z.string().max(100).optional(),
 });
 
 export default class ServerController {
-  
   createServer = async (req, res) => {
     try {
       const parsedBody = createServerSchema.parse(req.body);
-      
+
       const serverService = this.getServerService(req);
       const userId = req.user.id;
-      
+
       const serverCount = await prisma.server.count({ where: { userId } });
       if (serverCount >= 3) {
-        return res.status(403).json({ error: 'You have reached the limit of 3 servers' });
+        return res.status(403).json({
+          error: {
+            code: "LIMIT_EXCEEDED",
+            message: "You have reached the limit of 3 servers",
+          },
+        });
       }
 
       const { name, type, version, memory, compatibilityMode } = parsedBody;
-      
-      const server = await serverService.createServer(userId, name, type, version, memory, compatibilityMode);
-      
+
+      const server = await serverService.createServer(
+        userId,
+        name,
+        type,
+        version,
+        memory,
+        compatibilityMode,
+      );
+
       return res.status(201).json(server);
     } catch (error) {
       this.handleError(res, error);
@@ -64,7 +84,10 @@ export default class ServerController {
   getAgentHardware = async (req, res) => {
     try {
       const hardware = agentHardwareMap.get(req.user.id);
-      if (!hardware) return res.status(404).json({ error: 'Agent offline' });
+      if (!hardware)
+        return res
+          .status(404)
+          .json({ error: { code: "AGENT_OFFLINE", message: "Agent offline" } });
       return res.status(200).json(hardware);
     } catch (error) {
       this.handleError(res, error);
@@ -77,7 +100,11 @@ export default class ServerController {
       const serverService = this.getServerService(req);
       const userId = req.user.id;
       const serverId = req.params.id;
-      const server = await serverService.updateSettings(serverId, userId, parsedBody);
+      const server = await serverService.updateSettings(
+        serverId,
+        userId,
+        parsedBody,
+      );
       return res.status(200).json(server);
     } catch (error) {
       this.handleError(res, error);
@@ -89,9 +116,9 @@ export default class ServerController {
       const serverService = this.getServerService(req);
       const serverId = req.params.id;
       const userId = req.user.id;
-      
+
       const server = await serverService.startServer(serverId, userId);
-      
+
       return res.status(200).json(server);
     } catch (error) {
       this.handleError(res, error);
@@ -103,9 +130,9 @@ export default class ServerController {
       const serverService = this.getServerService(req);
       const serverId = req.params.id;
       const userId = req.user.id;
-      
+
       const server = await serverService.stopServer(serverId, userId);
-      
+
       return res.status(200).json(server);
     } catch (error) {
       this.handleError(res, error);
@@ -118,9 +145,13 @@ export default class ServerController {
       const serverId = req.params.id;
       const userId = req.user.id;
       const { command } = req.body;
-      
-      const result = await serverService.executeCommand(serverId, userId, command);
-      
+
+      const result = await serverService.executeCommand(
+        serverId,
+        userId,
+        command,
+      );
+
       return res.status(200).json(result);
     } catch (error) {
       this.handleError(res, error);
@@ -132,10 +163,10 @@ export default class ServerController {
       const serverService = this.getServerService(req);
       const userId = req.user.id;
       const serverId = req.params.id;
-      const { keepFiles } = req.body || {}; 
-      
+      const { keepFiles } = req.body || {};
+
       await serverService.deleteServer(serverId, userId, !keepFiles);
-      
+
       return res.status(200).json({ success: true });
     } catch (error) {
       this.handleError(res, error);
@@ -148,24 +179,44 @@ export default class ServerController {
       const userId = req.user.id;
       const serverId = req.params.id;
       const { action, filePath, content, isBase64, url } = req.body;
-      
+
       const server = await serverService.findServerById(serverId);
-      if (server.userId !== userId) return res.status(403).json({ error: 'Unauthorized' });
+      if (server.userId !== userId)
+        return res
+          .status(403)
+          .json({ error: { code: "UNAUTHORIZED", message: "Unauthorized" } });
 
-      const io = req.app.get('io');
-      const sockets = await io.fetchSockets();
-      const agentSocket = sockets.find(s => s.isAgent && s.userId === userId);
-      
-      if (!agentSocket) return res.status(503).json({ error: 'Agent offline' });
+      const io = req.app.get("io");
+      const agentSockets = await io.in(`agent-${userId}`).fetchSockets();
+      const agentSocket = agentSockets[0];
 
-      agentSocket.timeout(15000).emit('FS_OPERATION', { serverId, action, filePath, content, isBase64, url }, (err, response) => {
-        if (err) return res.status(504).json({ error: 'Agent timeout' });
-        if (response && response.success) {
-          return res.status(200).json(response.data);
-        } else {
-          return res.status(400).json({ error: response?.error || 'Unknown error' });
-        }
-      });
+      if (!agentSocket)
+        return res
+          .status(503)
+          .json({ error: { code: "AGENT_OFFLINE", message: "Agent offline" } });
+
+      agentSocket
+        .timeout(15000)
+        .emit(
+          "FS_OPERATION",
+          { serverId, action, filePath, content, isBase64, url },
+          (err, response) => {
+            if (err)
+              return res.status(504).json({
+                error: { code: "AGENT_TIMEOUT", message: "Agent timeout" },
+              });
+            if (response && response.success) {
+              return res.status(200).json(response.data);
+            } else {
+              return res.status(400).json({
+                error: {
+                  code: "AGENT_ERROR",
+                  message: response?.error || "Unknown error",
+                },
+              });
+            }
+          },
+        );
     } catch (error) {
       this.handleError(res, error);
     }
@@ -176,24 +227,40 @@ export default class ServerController {
       const serverService = this.getServerService(req);
       const userId = req.user.id;
       const serverId = req.params.id;
-      
+
       const server = await serverService.findServerById(serverId);
-      if (server.userId !== userId) return res.status(403).json({ error: 'Unauthorized' });
+      if (server.userId !== userId)
+        return res
+          .status(403)
+          .json({ error: { code: "UNAUTHORIZED", message: "Unauthorized" } });
 
-      const io = req.app.get('io');
-      const sockets = await io.fetchSockets();
-      const agentSocket = sockets.find(s => s.isAgent && s.userId === userId);
-      
-      if (!agentSocket) return res.status(503).json({ error: 'Agent offline' });
+      const io = req.app.get("io");
+      const agentSockets = await io.in(`agent-${userId}`).fetchSockets();
+      const agentSocket = agentSockets[0];
 
-      agentSocket.timeout(15000).emit('get_player_stats', { serverId }, (err, response) => {
-        if (err) return res.status(504).json({ error: 'Agent timeout' });
-        if (response && response.success) {
-          return res.status(200).json(response.data);
-        } else {
-          return res.status(400).json({ error: response?.error || 'Unknown error' });
-        }
-      });
+      if (!agentSocket)
+        return res
+          .status(503)
+          .json({ error: { code: "AGENT_OFFLINE", message: "Agent offline" } });
+
+      agentSocket
+        .timeout(15000)
+        .emit("get_player_stats", { serverId }, (err, response) => {
+          if (err)
+            return res.status(504).json({
+              error: { code: "AGENT_TIMEOUT", message: "Agent timeout" },
+            });
+          if (response && response.success) {
+            return res.status(200).json(response.data);
+          } else {
+            return res.status(400).json({
+              error: {
+                code: "AGENT_ERROR",
+                message: response?.error || "Unknown error",
+              },
+            });
+          }
+        });
     } catch (error) {
       this.handleError(res, error);
     }
@@ -203,20 +270,40 @@ export default class ServerController {
       const serverService = this.getServerService(req);
       const userId = req.user.id;
       const serverId = req.params.id;
-      
+
       const server = await serverService.findServerById(serverId);
-      if (server.userId !== userId) return res.status(403).json({ error: 'Unauthorized' });
+      if (server.userId !== userId)
+        return res
+          .status(403)
+          .json({ error: { code: "UNAUTHORIZED", message: "Unauthorized" } });
 
-      const io = req.app.get('io');
-      const agentSocket = (await io.fetchSockets()).find(s => s.isAgent && s.userId === userId);
-      if (!agentSocket) return res.status(503).json({ error: 'Agent offline' });
+      const io = req.app.get("io");
+      const agentSockets = await io.in(`agent-${userId}`).fetchSockets();
+      const agentSocket = agentSockets[0];
+      if (!agentSocket)
+        return res
+          .status(503)
+          .json({ error: { code: "AGENT_OFFLINE", message: "Agent offline" } });
 
-      agentSocket.timeout(15000).emit('list_backups', { serverId }, (err, response) => {
-        if (err) return res.status(504).json({ error: 'Agent timeout' });
-        if (response && response.success) return res.status(200).json(response.data);
-        return res.status(400).json({ error: response?.error || 'Unknown error' });
-      });
-    } catch (error) { this.handleError(res, error); }
+      agentSocket
+        .timeout(15000)
+        .emit("list_backups", { serverId }, (err, response) => {
+          if (err)
+            return res.status(504).json({
+              error: { code: "AGENT_TIMEOUT", message: "Agent timeout" },
+            });
+          if (response && response.success)
+            return res.status(200).json(response.data);
+          return res.status(400).json({
+            error: {
+              code: "AGENT_ERROR",
+              message: response?.error || "Unknown error",
+            },
+          });
+        });
+    } catch (error) {
+      this.handleError(res, error);
+    }
   };
 
   createBackup = async (req, res) => {
@@ -225,20 +312,44 @@ export default class ServerController {
       const userId = req.user.id;
       const serverId = req.params.id;
       const { profile } = req.body;
-      
+
       const server = await serverService.findServerById(serverId);
-      if (server.userId !== userId) return res.status(403).json({ error: 'Unauthorized' });
+      if (server.userId !== userId)
+        return res
+          .status(403)
+          .json({ error: { code: "UNAUTHORIZED", message: "Unauthorized" } });
 
-      const io = req.app.get('io');
-      const agentSocket = (await io.fetchSockets()).find(s => s.isAgent && s.userId === userId);
-      if (!agentSocket) return res.status(503).json({ error: 'Agent offline' });
+      const io = req.app.get("io");
+      const agentSockets = await io.in(`agent-${userId}`).fetchSockets();
+      const agentSocket = agentSockets[0];
+      if (!agentSocket)
+        return res
+          .status(503)
+          .json({ error: { code: "AGENT_OFFLINE", message: "Agent offline" } });
 
-      agentSocket.timeout(15000).emit('create_backup', { serverId, profile: profile || 'full' }, (err, response) => {
-        if (err) return res.status(504).json({ error: 'Agent timeout' });
-        if (response && response.success) return res.status(201).json(response);
-        return res.status(400).json({ error: response?.error || 'Unknown error' });
-      });
-    } catch (error) { this.handleError(res, error); }
+      agentSocket
+        .timeout(15000)
+        .emit(
+          "create_backup",
+          { serverId, profile: profile || "full" },
+          (err, response) => {
+            if (err)
+              return res.status(504).json({
+                error: { code: "AGENT_TIMEOUT", message: "Agent timeout" },
+              });
+            if (response && response.success)
+              return res.status(201).json(response);
+            return res.status(400).json({
+              error: {
+                code: "AGENT_ERROR",
+                message: response?.error || "Unknown error",
+              },
+            });
+          },
+        );
+    } catch (error) {
+      this.handleError(res, error);
+    }
   };
 
   deleteBackup = async (req, res) => {
@@ -246,20 +357,40 @@ export default class ServerController {
       const serverService = this.getServerService(req);
       const userId = req.user.id;
       const { id: serverId, fileName } = req.params;
-      
+
       const server = await serverService.findServerById(serverId);
-      if (server.userId !== userId) return res.status(403).json({ error: 'Unauthorized' });
+      if (server.userId !== userId)
+        return res
+          .status(403)
+          .json({ error: { code: "UNAUTHORIZED", message: "Unauthorized" } });
 
-      const io = req.app.get('io');
-      const agentSocket = (await io.fetchSockets()).find(s => s.isAgent && s.userId === userId);
-      if (!agentSocket) return res.status(503).json({ error: 'Agent offline' });
+      const io = req.app.get("io");
+      const agentSockets = await io.in(`agent-${userId}`).fetchSockets();
+      const agentSocket = agentSockets[0];
+      if (!agentSocket)
+        return res
+          .status(503)
+          .json({ error: { code: "AGENT_OFFLINE", message: "Agent offline" } });
 
-      agentSocket.timeout(15000).emit('delete_backup', { serverId, fileName }, (err, response) => {
-        if (err) return res.status(504).json({ error: 'Agent timeout' });
-        if (response && response.success) return res.status(200).json(response);
-        return res.status(400).json({ error: response?.error || 'Unknown error' });
-      });
-    } catch (error) { this.handleError(res, error); }
+      agentSocket
+        .timeout(15000)
+        .emit("delete_backup", { serverId, fileName }, (err, response) => {
+          if (err)
+            return res.status(504).json({
+              error: { code: "AGENT_TIMEOUT", message: "Agent timeout" },
+            });
+          if (response && response.success)
+            return res.status(200).json(response);
+          return res.status(400).json({
+            error: {
+              code: "AGENT_ERROR",
+              message: response?.error || "Unknown error",
+            },
+          });
+        });
+    } catch (error) {
+      this.handleError(res, error);
+    }
   };
 
   downloadBackup = async (req, res) => {
@@ -267,49 +398,94 @@ export default class ServerController {
       const serverService = this.getServerService(req);
       const userId = req.user.id;
       const { id: serverId, fileName } = req.params;
-      
+
       const server = await serverService.findServerById(serverId);
-      if (server.userId !== userId) return res.status(403).json({ error: 'Unauthorized' });
+      if (server.userId !== userId)
+        return res
+          .status(403)
+          .json({ error: { code: "UNAUTHORIZED", message: "Unauthorized" } });
 
-      if (!(fileName.endsWith('.zip') || fileName.endsWith('.tar.gz')) || fileName.includes('/')) return res.status(400).json({ error: 'Invalid file' });
+      if (
+        !(fileName.endsWith(".zip") || fileName.endsWith(".tar.gz")) ||
+        fileName.includes("/")
+      )
+        return res
+          .status(400)
+          .json({ error: { code: "INVALID_FILE", message: "Invalid file" } });
 
-      const backupPath = path.join(os.homedir(), '.minecraft-manager', 'servers', serverId, 'backups', fileName);
-      
+      const backupPath = path.join(
+        os.homedir(),
+        ".minecraft-manager",
+        "servers",
+        serverId,
+        "backups",
+        fileName,
+      );
+
       if (!fs.existsSync(backupPath)) {
-        return res.status(404).json({ error: 'Backup not found' });
+        return res.status(404).json({
+          error: { code: "BACKUP_NOT_FOUND", message: "Backup not found" },
+        });
       }
 
-      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-      res.setHeader('Content-Type', fileName.endsWith('.zip') ? 'application/zip' : 'application/gzip');
-      
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${fileName}"`,
+      );
+      res.setHeader(
+        "Content-Type",
+        fileName.endsWith(".zip") ? "application/zip" : "application/gzip",
+      );
+
       const fileStream = fs.createReadStream(backupPath);
-      fileStream.on('error', (err) => {
-        console.error('Error streaming file:', err);
-        if (!res.headersSent) res.status(500).json({ error: 'Error reading file' });
+      fileStream.on("error", (err) => {
+        console.error("Error streaming file:", err);
+        if (!res.headersSent)
+          res.status(500).json({
+            error: { code: "FILE_READ_ERROR", message: "Error reading file" },
+          });
       });
-      
+
       return fileStream.pipe(res);
-    } catch (error) { this.handleError(res, error); }
+    } catch (error) {
+      this.handleError(res, error);
+    }
   };
 
   getServerService(req) {
-    const io = req.app.get('io');
+    const io = req.app.get("io");
     return new ServerService(io);
   }
 
   handleError(res, error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: error.errors.map(e => e.message).join(', ') });
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: error.errors.map((e) => e.message).join(", "),
+        },
+      });
     }
 
-    if (error.message.includes('required') || 
-        error.message.includes('not found') ||
-        error.message.includes('already running') ||
-        error.message.includes('must be ONLINE') ||
-        error.message.includes('stop')) {
-      return res.status(400).json({ error: error.message });
+    if (error.message.includes("not found")) {
+      return res
+        .status(404)
+        .json({ error: { code: "NOT_FOUND", message: error.message } });
     }
-    
-    return res.status(500).json({ error: 'Internal server error' });
+
+    if (
+      error.message.includes("already running") ||
+      error.message.includes("must be ONLINE") ||
+      error.message.includes("stop") ||
+      error.message.includes("required")
+    ) {
+      return res
+        .status(400)
+        .json({ error: { code: "BAD_REQUEST", message: error.message } });
+    }
+
+    return res.status(500).json({
+      error: { code: "INTERNAL_ERROR", message: "Internal server error" },
+    });
   }
 }
