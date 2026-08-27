@@ -1,7 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import LocalAgentController from '../src/controllers/LocalAgentController.js';
-import NativeServerService from '../src/services/NativeServerService.js';
-import TunnelService from '../src/services/TunnelService.js';
 import ConnectionService from '../src/services/ConnectionService.js';
 
 vi.mock('../src/services/NativeServerService.js');
@@ -31,4 +29,19 @@ describe('LocalAgentController', () => {
     expect(connectionInstance.connect).toHaveBeenCalled();
   });
 
+  test('emits SYNC_STATE on connected with active servers', () => {
+    controller.serverManager.activeServers = new Map([
+      ['srv-1', {}]
+    ]);
+    const connectionInstance = vi.mocked(ConnectionService).mock.instances[0];
+    connectionInstance.socket = { emit: vi.fn() };
+    
+    const connectedHandler = connectionInstance.on.mock.calls.find(c => c[0] === 'connected')[1];
+    connectedHandler();
+    
+    expect(connectionInstance.socket.emit).toHaveBeenCalledWith('ENVELOPE', {
+      type: 'SYNC_STATE',
+      payload: [{ id: 'srv-1', status: 'ONLINE' }]
+    });
+  });
 });
