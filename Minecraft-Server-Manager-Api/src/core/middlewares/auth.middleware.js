@@ -1,17 +1,17 @@
-import jwt from 'jsonwebtoken';
+import jwt from "jsonwebtoken";
 
 export const verifyToken = (req, res, next) => {
   let token = req.cookies?.accessToken;
-  
+
   if (!token) {
     const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.split(' ')[1];
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
     }
   }
 
   if (!token) {
-    return res.status(401).json({ error: 'Token missing or invalid' });
+    return res.status(401).json({ error: "Token missing or invalid" });
   }
 
   try {
@@ -19,6 +19,6 @@ export const verifyToken = (req, res, next) => {
     req.user = decoded;
     next();
   } catch (error) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+    return res.status(401).json({ error: "Invalid or expired token" });
   }
 };

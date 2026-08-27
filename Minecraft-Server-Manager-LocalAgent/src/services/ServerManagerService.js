@@ -2,12 +2,51 @@ import path from "path";
 import os from "os";
 import NativeServerService from "./NativeServerService.js";
 import TunnelService from "./TunnelService.js";
+import PidStore from "../utils/PidStore.js";
 
 export default class ServerManagerService {
   constructor(connectionService) {
     this.activeServers = new Map();
     this.nextPort = 25565;
     this.connectionService = connectionService;
+    this.recoverOrphans();
+  }
+
+  recoverOrphans() {
+    const saved = PidStore.loadAll();
+    for (const [serverId, pid] of Object.entries(saved)) {
+      if (!PidStore.isAlive(pid)) {
+        PidStore.removePid(serverId);
+        continue;
+      }
+      this.activeServers.set(serverId, {
+        port: null,
+        isOrphan: true,
+        nativeServerService: {
+          process: { pid },
+          stopMinecraftServer: async () => {
+            try {
+              process.kill(pid, "SIGTERM");
+            } catch (e) {}
+            const exited = await PidStore.waitForExit(pid, 10000);
+            if (!exited) {
+              try {
+                process.kill(pid, "SIGKILL");
+              } catch (e) {}
+            }
+          },
+          killMinecraftServer: () => {
+            try {
+              process.kill(pid, "SIGKILL");
+            } catch (e) {}
+          },
+          sendCommand: () => {},
+        },
+        tunnelService: {
+          stopTunnel: () => {},
+        },
+      });
+    }
   }
 
   getAvailablePort() {
@@ -21,45 +60,47 @@ export default class ServerManagerService {
     return port;
   }
 
-  setupServerListeners(serverId, nativeServerService) {
-    nativeServerService.on("log", (logLine) => {
-      this.connectionService.sendLog({ serverId, logLine });
-    });
+  setupServerListeners(serverId, nativeServerService, tunnelService) {
+    const nativeEventHandlers = {
+      log: (logLine) => this.connectionService.sendLog({ serverId, logLine }),
+      telemetry: (stats) =>
+        this.connectionService.sendTelemetry({ serverId, stats }),
+      started: () =>
+        this.connectionService.sendStateUpdate({ serverId, status: "ONLINE" }),
+      stopped: () => {
+        this.connectionService.sendStateUpdate({ serverId, status: "OFFLINE" });
+        if (this.activeServers.get(serverId)) {
+          this.activeServers
+            .get(serverId)
+            .nativeServerService.killMinecraftServer();
+        }
+      },
+    };
 
-    nativeServerService.on("telemetry", (stats) => {
-      this.connectionService.sendTelemetry({ serverId, stats });
-    });
+    for (const [event, handler] of Object.entries(nativeEventHandlers)) {
+      nativeServerService.on(event, handler);
+    }
 
-    nativeServerService.on("started", () => {
-      this.connectionService.sendStateUpdate({ serverId, status: "ONLINE" });
-    });
+    const tunnelEventHandlers = {
+      address_assigned: (address) =>
+        this.connectionService.sendTunnelInfo({ serverId, address }),
+      claim_link: (link) =>
+        this.connectionService.sendTunnelInfo({ serverId, claimLink: link }),
+      log: (logLine) =>
+        this.connectionService.sendLog({
+          serverId,
+          logLine: `[TUNNEL] ${logLine}`,
+        }),
+      error: (err) =>
+        this.connectionService.sendLog({
+          serverId,
+          logLine: `[TUNNEL ERROR] ${err}`,
+        }),
+    };
 
-    nativeServerService.on("stopped", () => {
-      this.connectionService.sendStateUpdate({ serverId, status: "OFFLINE" });
-      this.activeServers.delete(serverId);
-    });
-  }
-
-  setupTunnelListeners(serverId, tunnelService) {
-    tunnelService.on("address_assigned", (address) => {
-      this.connectionService.sendTunnelInfo({ serverId, address });
-    });
-
-    tunnelService.on("claim_link", (link) => {
-      this.connectionService.sendTunnelInfo({ serverId, claimLink: link });
-    });
-
-    tunnelService.on("log", (logLine) => {
-      this.connectionService.sendLog({ serverId, logLine });
-    });
-
-    tunnelService.on("error", (err) => {
-      console.error(`[Tunnel Error Server ${serverId}]:`, err);
-      this.connectionService.sendLog({
-        serverId,
-        logLine: `[Tunnel Error]: ${err}`,
-      });
-    });
+    for (const [event, handler] of Object.entries(tunnelEventHandlers)) {
+      tunnelService.on(event, handler);
+    }
   }
 
   async startServer(serverConfig) {
@@ -91,8 +132,7 @@ export default class ServerManagerService {
       const nativeServerService = new NativeServerService();
       const tunnelService = new TunnelService();
 
-      this.setupServerListeners(serverId, nativeServerService);
-      this.setupTunnelListeners(serverId, tunnelService);
+      this.setupServerListeners(serverId, nativeServerService, tunnelService);
 
       this.activeServers.set(serverId, {
         nativeServerService,
@@ -104,7 +144,8 @@ export default class ServerManagerService {
         serverId,
         logLine: "[System] Booting Native server...",
       });
-      await nativeServerService.startMinecraftServer(serverConfig);
+      const pid = await nativeServerService.startMinecraftServer(serverConfig);
+      if (pid) PidStore.savePid(serverId, parseInt(pid));
       await tunnelService.startTunnel(port, serverConfig.tunnelSecret);
     } catch (error) {
       console.error("Error in startServer:", error);
@@ -138,6 +179,7 @@ export default class ServerManagerService {
         logLine: `[System] Error stopping server: ${error.message}`,
       });
     } finally {
+      PidStore.removePid(requestedServerId);
       this.connectionService.sendStateUpdate({
         serverId: requestedServerId,
         status: "OFFLINE",
@@ -162,6 +204,7 @@ export default class ServerManagerService {
       });
     } catch (e) {
     } finally {
+      PidStore.removePid(requestedServerId);
       this.connectionService.sendStateUpdate({
         serverId: requestedServerId,
         status: "OFFLINE",
@@ -171,11 +214,12 @@ export default class ServerManagerService {
   }
 
   async stopAllServers() {
-    for (const active of this.activeServers.values()) {
+    for (const [serverId, active] of this.activeServers.entries()) {
       try {
         if (active.tunnelService) active.tunnelService.stopTunnel();
         if (active.nativeServerService)
           active.nativeServerService.killMinecraftServer();
+        PidStore.removePid(serverId);
       } catch (e) {}
     }
     this.activeServers.clear();

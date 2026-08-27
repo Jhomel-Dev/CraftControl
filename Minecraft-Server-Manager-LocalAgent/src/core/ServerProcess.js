@@ -1,36 +1,27 @@
-import { spawn } from "child_process";
 import EventEmitter from "events";
 import pidusage from "pidusage";
 import os from "os";
-import { killProcessHard } from "../utils/osUtils.js";
+import ProcessManager from "./ProcessManager.js";
 
 export default class ServerProcess extends EventEmitter {
   constructor(dataDir, javaExe, spawnArgs) {
     super();
-    this.dataDir = dataDir;
-    this.javaExe = javaExe;
-    this.spawnArgs = spawnArgs;
-    this.process = null;
+    this.processManager = new ProcessManager(dataDir, javaExe, spawnArgs);
     this.metricsInterval = null;
   }
 
   start() {
-    this.process = spawn(this.javaExe, this.spawnArgs, {
-      cwd: this.dataDir,
-      stdio: ["pipe", "pipe", "pipe"],
-      detached: process.platform !== "win32",
-    });
-
     this.attachOutputListeners();
-    this.startTelemetry();
+    const pid = this.processManager.start();
 
-    this.process.on("exit", () => this.handleExit());
-    return this.process.pid.toString();
+    this.startTelemetry();
+    this.processManager.on("exit", () => this.handleExit());
+    return pid;
   }
 
   attachOutputListeners() {
-    this.process.stdout.on("data", (data) => this.processStdout(data));
-    this.process.stderr.on("data", (data) => this.processStderr(data));
+    this.processManager.on("stdout", (data) => this.processStdout(data));
+    this.processManager.on("stderr", (data) => this.processStderr(data));
   }
 
   processStdout(data) {
@@ -72,9 +63,10 @@ export default class ServerProcess extends EventEmitter {
     if (this.metricsInterval) clearInterval(this.metricsInterval);
 
     this.metricsInterval = setInterval(async () => {
-      if (!this.process || !this.process.pid) return;
+      if (!this.processManager.isRunning()) return;
       try {
-        const stats = await pidusage(this.process.pid);
+        const pid = this.processManager.process.pid;
+        const stats = await pidusage(pid);
         this.emit("telemetry", {
           cpu: stats.cpu / os.cpus().length,
           memory: stats.memory,
@@ -85,40 +77,20 @@ export default class ServerProcess extends EventEmitter {
 
   handleExit() {
     if (this.metricsInterval) clearInterval(this.metricsInterval);
-    this.process = null;
     this.emit("stopped");
   }
 
   async stop() {
-    if (!this.process) return;
-
-    return new Promise((resolve) => {
-      this.process.once("exit", resolve);
-      this.sendCommand("stop");
-
-      setTimeout(() => {
-        if (this.process) {
-          killProcessHard(this.process.pid);
-          this.process = null;
-        }
-        resolve();
-      }, 10000);
-    });
+    await this.processManager.stopGracefully(10000);
   }
 
   sendCommand(command) {
-    if (!this.process || !this.process.stdin)
-      throw new Error("Server is not running");
-    try {
-      this.process.stdin.write(`${command}\n`);
-    } catch (e) {}
+    this.processManager.sendCommand(command);
   }
 
   killForcefully() {
-    if (!this.process) return;
     if (this.metricsInterval) clearInterval(this.metricsInterval);
-    killProcessHard(this.process.pid);
-    this.process = null;
+    this.processManager.kill();
     this.emit("stopped");
   }
 }

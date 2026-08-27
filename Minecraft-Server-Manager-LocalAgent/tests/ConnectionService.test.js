@@ -42,6 +42,9 @@ describe('ConnectionService', () => {
   test('sendTelemetry emits event when connected', () => {
     service.connect();
     service.sendTelemetry({ cpu: 50 });
-    expect(mockSocket.emit).toHaveBeenCalledWith('TELEMETRY_UPDATE', { cpu: 50 });
+    expect(mockSocket.emit).toHaveBeenCalledWith('ENVELOPE', expect.objectContaining({
+      type: 'TELEMETRY_UPDATE',
+      payload: { cpu: 50 }
+    }));
   });
 });

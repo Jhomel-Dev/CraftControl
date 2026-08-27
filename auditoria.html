@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auditoría Técnica Independiente - CraftControl (Fase 1 y 2 Completadas)</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --text-color: #333;
+            --card-bg: #fff;
+            --primary: #2c3e50;
+            --border: #e0e0e0;
+            --error: #e74c3c;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --pending: #95a5a6;
+            --highlight: #e8f4f8;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background: var(--bg-color);
+            margin: 0;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1, h2, h3 {
+            color: var(--primary);
+        }
+        h1 {
+            text-align: center;
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+        .summary-box {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+            border-left: 5px solid var(--primary);
+        }
+        .news-box {
+            background: var(--highlight);
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+            border-left: 5px solid var(--success);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 2.5rem;
+        }
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background-color: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+        .evidence {
+            font-family: 'Fira Code', 'Consolas', monospace;
+            background: #f1f2f6;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85em;
+            color: #d35400;
+            word-break: break-word;
+        }
+        .status {
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .s-error { color: var(--error); }
+        .s-success { color: var(--success); }
+        .s-partial { color: var(--warning); }
+        .s-pending { color: var(--pending); }
+        
+        .recommendation {
+            background: #d4edda;
+            color: #155724;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 5px solid #c3e6cb;
+            font-size: 1.1em;
+            margin-top: 3rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .stats {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .stat-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            color: white;
+            font-weight: bold;
+        }
+        .priority-section {
+            border: 2px solid var(--success);
+            padding: 1rem;
+            border-radius: 8px;
+            background: #fff;
+            margin-bottom: 2.5rem;
+            position: relative;
+        }
+        .priority-label {
+            position: absolute;
+            top: -12px;
+            right: 20px;
+            background: var(--success);
+            color: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Auditoría Técnica Independiente - CraftControl <br><span style="font-size:0.6em; color:var(--success)">(Fase 1 y 2 Completadas)</span></h1>
+
+    <div class="news-box">
+        <h2>🚀 Novedades: ¡Objetivo Cumplido!</h2>
+        <p>Tus últimos commits han cerrado todas las brechas estructurales de la <strong>Fase 1 y Fase 2</strong>:</p>
+        <ul>
+            <li><strong>Logs Estructurados:</strong> Excelente implementación de <code>Winston</code> con <code>AsyncLocalStorage</code> para inyectar `requestId` y redacción de secretos.</li>
+            <li><strong>Health Checks:</strong> Ahora la API hace ping real a la DB usando <code>prisma.$queryRaw</code>.</li>
+            <li><strong>Máquina de Estados Finitos (FSM):</strong> Se introdujo <code>ServerStateMachine.js</code> que valida de forma dura las transiciones y tira error si son inválidas.</li>
+        </ul>
+    </div>
+
+    <div class="summary-box">
+        <h2>📊 Resumen de Estado Global</h2>
+        <div class="stats">
+            <span class="stat-badge" style="background: var(--success)">✅ Completo: 15</span>
+            <span class="stat-badge" style="background: var(--warning)">🟡 Parcial: 2</span>
+            <span class="stat-badge" style="background: var(--pending)">⬜ Pendiente: 8</span>
+            <span class="stat-badge" style="background: var(--error)">❌ Error: 7</span>
+        </div>
+        
+        <h3>🚨 Bloqueantes Reales Restantes (P0)</h3>
+        <ol>
+            <li><strong>Zip Slip (FileSystem):</strong> Riesgo en <code>unzip</code> que expone el SO a sobreescritura (ej. <code>~/.ssh</code>).</li>
+            <li><strong>Binarios sin Checksum:</strong> Paper y Vanilla se descargan sin verificar hash.</li>
+            <li><strong>Corrupción silenciosa de Backups:</strong> Compresión directa sobre el archivo final sin temporal atómico.</li>
+        </ol>
+    </div>
+
+    <h2>🚨 Prioridades Críticas (P0 - Bloqueantes)</h2>
+    <table>
+        <thead>
+            <tr><th>#</th><th>Ítem</th><th>Estado</th><th>Evidencia</th><th>Riesgo / Nota</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>1</td><td>Seguridad (FS): Aislamiento del Root</td><td><span class="status s-error">❌ Error</span></td><td><span class="evidence">FileService.js:152</span></td><td>Zip Slip al usar <code>unzip</code> sin sandboxing.</td></tr>
+            <tr><td>2</td><td>Seguridad (Auth): IDOR y tokens</td><td><span class="status s-success">✅ Completo</span></td><td><span class="evidence">agent.controller.js</span></td><td>Validaciones correctas y revocación aplicada.</td></tr>
+            <tr><td>3</td><td>Procesos Huérfanos</td><td><span class="status s-success">✅ Completo</span></td><td><span class="evidence">ServerManagerService.js:25</span></td><td>Trackeados vía PidStore; timeout implementado antes del SIGKILL. Excelente.</td></tr>
+            <tr><td>4</td><td>Consistencia de Estado</td><td><span class="status s-success">✅ Completo</span></td><td><span class="evidence">agent.gateway.js:231</span></td><td>Reconciliación perfecta usando <code>SYNC_STATE</code> desde el agente.</td></tr>
+            <tr><td>5</td><td>Validación de Binarios</td><td><span class="status s-error">❌ Error</span></td><td><span class="evidence">PaperInstaller.js:76</span></td><td>Descarga de JARs sin validación de checksum.</td></tr>
+            <tr><td>6</td><td>Seguridad de Backups</td><td><span class="status s-error">❌ Error</span></td><td><span class="evidence">BackupService.js:170</span></td><td>Escritura directa sin temporales; riesgo de corrupción.</td></tr>
+        </tbody>
+    </table>
+
+    <h2>📌 Ejecución Inmediata</h2>
+    <table>
+        <thead>
+            <tr><th>#</th><th>Ítem</th><th>Estado</th><th>Evidencia</th><th>Riesgo / Nota</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>1</td><td>Documentos operativos</td><td><span class="status s-pending">⬜ Pendiente</span></td><td><span class="evidence">/docs</span></td><td>Siguen sin existir RELIABILITY.md, TESTING.md, etc.</td></tr>
+            <tr><td>2</td><td>Tests de caracterización</td><td><span class="status s-success">✅ Completo</span></td><td><span class="evidence">tests/</span></td><td>Agregados tests de estado y de NativeServerService.</td></tr>
+            <tr><td>3</td><td>Preparar ProcessManager</td><td><span class="status s-success">✅ Completo</span></td><td><span class="evidence">ProcessManager.js</span></td><td>El núcleo de manejo de procesos ha sido exitosamente abstraído.</td></tr>
+        </tbody>
+    </table>
+
+    <div class="priority-section">
+        <div class="priority-label">🏆 PRIORIDAD ACTUAL</div>
+        <h2>🗺️ Fase 1: Observabilidad y Contratos</h2>
+        <table>
+            <thead>
+                <tr><th>#</th><th>Ítem</th><th>Estado</th><th>Evidencia</th><th>Riesgo / Nota</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>1</td><td>Sobres de eventos (Envelope)</td><td><span class="status s-success">✅ Completo</span></td><td><span class="evidence">Envelope.js</span></td><td>Los sockets usan envelopes con IDs trazables.</td></tr>
+                <tr><td>2</td><td>Códigos de error explícitos</td><td><span class="status s-success">✅ Completo</span></td><td><span class="evidence">server.controller.js</span></td><td>API retorna errores tipados como <code>AGENT_OFFLINE</code>, <code>UNAUTHORIZED</code>.</td></tr>
+                <tr><td>3</td><td>Logs estructurados / Fuga secretos</td><td><span class="status s-success">✅ Completo</span></td><td><span class="evidence">logger.js</span></td><td>Winston implementado con AsyncLocalStorage y máscara de secretos.</td></tr>
+                <tr><td>4</td><td>Health Checks</td><td><span class="status s-success">✅ Completo</span></td><td><span class="evidence">Api/src/index.js:64</span></td><td>API hace ping real a la base de datos (<code>SELECT 1</code>).</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="priority-section">
+        <div class="priority-label">🏆 PRIORIDAD ACTUAL</div>
+        <h2>⚙️ Fase 2: Máquina de Estados</h2>
+        <table>
+            <thead>
+                <tr><th>#</th><th>Ítem</th><th>Estado</th><th>Evidencia</th><th>Riesgo / Nota</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>1</td><td>Máquina de estados finitos</td><td><span class="status s-success">✅ Completo</span></td><td><span class="evidence">ServerStateMachine.js</span></td><td>Máquina de estados estricta que rechaza flujos inválidos.</td></tr>
+                <tr><td>2</td><td>Impedir transiciones no válidas</td><td><span class="status s-success">✅ Completo</span></td><td><span class="evidence">agent.gateway.js:182</span></td><td>Validación dura implementada en la puerta de enlace.</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h2>🛠️ Fase 3: ProcessManager (Core Refactor)</h2>
+    <table>
+        <thead>
+            <tr><th>#</th><th>Ítem</th><th>Estado</th><th>Evidencia</th><th>Riesgo / Nota</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>1</td><td>Centralizar spawn y shell:false</td><td><span class="status s-success">✅ Completo</span></td><td><span class="evidence">ProcessManager.js:23</span></td><td>Lógica bien centralizada y parametrizada.</td></tr>
+            <tr><td>2</td><td>Timeouts de arranque/parada</td><td><span class="status s-partial">🟡 Parcial</span></td><td><span class="evidence">ProcessManager.js:40</span></td><td>Parada controlada; falta timeout para límite de stdout.</td></tr>
+            <tr><td>3</td><td>SIGTERM / SIGKILL escalonado</td><td><span class="status s-success">✅ Completo</span></td><td><span class="evidence">ServerManagerService.js:23</span></td><td>Manejo apropiado del ciclo de muerte del proceso.</td></tr>
+            <tr><td>4</td><td>Locks lógicos concurrentes</td><td><span class="status s-error">❌ Error</span></td><td><span class="evidence">server.service.js:67</span></td><td>Falta validación atómica (locks) en la API.</td></tr>
+        </tbody>
+    </table>
+
+    <h2>🌐 Fases 4, 5, 6, 7 y 8</h2>
+    <table>
+        <thead>
+            <tr><th>#</th><th>Ítem (Resumido)</th><th>Estado</th><th>Riesgo / Nota</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>F4</td><td>Backoff, Heartbeats y Reconciliación</td><td><span class="status s-partial">🟡 Parcial</span></td><td>La reconciliación ahora es efectiva, falta backoff y heartbeats.</td></tr>
+            <tr><td>F5</td><td>Sandboxing (Rutas Canónicas)</td><td><span class="status s-error">❌ Error</span></td><td>Fallo crítico de extracción ZIP.</td></tr>
+            <tr><td>F7</td><td>Validar descargas y Backups atómicos</td><td><span class="status s-error">❌ Error</span></td><td>Descargas sin hashes, Backups sin temporal.</td></tr>
+            <tr><td>F8</td><td>Túnel seguro</td><td><span class="status s-partial">🟡 Parcial</span></td><td>Descarga segura, pero el proceso queda huérfano.</td></tr>
+        </tbody>
+    </table>
+
+    <div class="recommendation">
+        <strong>🏆 FASES 1 Y 2 CERRADAS. ¡Felicidades!</strong><br><br>
+        Has blindado la capa de observabilidad, centralizado las transiciones de estado, rastreado los procesos nativos de manera magistral y bloqueado fugas de memoria con tu logger avanzado. <br><br>
+        <strong>El sistema es oficialmente predecible a nivel de estado.</strong> Si decides avanzar hacia la fase 3-8, te recomiendo empezar por los 3 fallos de P0 restantes (Hashes en Vanilla/Paper, Backups atómicos y mitigar el Zip Slip).
+    </div>
+</div>
+
+</body>
+</html>

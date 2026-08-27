@@ -1,4 +1,4 @@
-import UserService from '../services/user.service.js';
+import UserService from "../services/user.service.js";
 
 export default class UserController {
   constructor() {
@@ -10,15 +10,16 @@ export default class UserController {
       const userId = req.user.id;
       const { username } = req.body;
 
-      const { accessToken, updatedUser } = await this.userService.updateUsername(userId, username);
+      const { accessToken, updatedUser } =
+        await this.userService.updateUsername(userId, username);
 
-      return res.status(200).json({ 
+      return res.status(200).json({
         token: accessToken,
-        user: { 
-          id: updatedUser.id, 
-          username: updatedUser.username, 
-          email: updatedUser.email 
-        } 
+        user: {
+          id: updatedUser.id,
+          username: updatedUser.username,
+          email: updatedUser.email,
+        },
       });
     } catch (error) {
       this.handleError(res, error);
@@ -26,9 +27,12 @@ export default class UserController {
   };
 
   handleError(res, error) {
-    if (error.message === 'Username is required' || error.message === 'Username already taken') {
+    if (
+      error.message === "Username is required" ||
+      error.message === "Username already taken"
+    ) {
       return res.status(400).json({ error: error.message });
     }
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: "Internal server error" });
   }
 }

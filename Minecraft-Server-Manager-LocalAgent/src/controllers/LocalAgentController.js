@@ -7,6 +7,7 @@ import ServerManagerService from "../services/ServerManagerService.js";
 import os from "os";
 import path from "path";
 import fs from "fs/promises";
+import logger from "../utils/logger.js";
 
 export default class LocalAgentController {
   constructor(config) {
@@ -49,62 +50,37 @@ export default class LocalAgentController {
 
   setupConnectionListeners() {
     this.connectionService.on("connected", () => {
-      console.log("[INFO] Local Agent connected successfully to Cloud API.");
+      logger.info("[INFO] Local Agent connected successfully to Cloud API.");
       if (this.daemon) this.daemon.setStatus("paired");
+
+      if (this.connectionService.socket) {
+        const activeState = Array.from(
+          this.serverManager.activeServers.entries(),
+        ).map(([id]) => ({
+          id,
+          status: "ONLINE",
+        }));
+        this.connectionService.socket.emit("ENVELOPE", {
+          type: "SYNC_STATE",
+          payload: activeState,
+        });
+      }
     });
 
     this.connectionService.on("disconnected", () => {
-      console.log("[WARN] Connection lost with Cloud API. Retrying...");
+      logger.warn("[WARN] Connection lost with Cloud API. Retrying...");
     });
 
     this.connectionService.on("error", (err) => {
-      console.error("[ERROR] API connection error:", err.message || err);
+      logger.error(`[ERROR] API connection error: ${err.message || err}`);
       if (err.message && err.message.includes("Missing Token")) {
-        console.log("The local token has been invalidated by the server.");
+        logger.info("The local token has been invalidated by the server.");
         this.connectionService.emit("AGENT_UNLINK");
       }
     });
 
-    this.connectionService.on("command_start", async (serverConfig) => {
-      if (this.isHibernating) {
-        console.log(
-          `[Hibernate] Start command blocked for server: ${serverConfig.id}`,
-        );
-        return;
-      }
-      console.log(`Received start command for server: ${serverConfig.id}`);
-      await this.serverManager.startServer(serverConfig);
-    });
-
-    this.connectionService.on("command_stop", (payload) => {
-      if (this.isHibernating) {
-        console.log(
-          `[Hibernate] Stop command blocked for server: ${payload?.id}`,
-        );
-        return;
-      }
-      console.log(`Received stop command for server: ${payload?.id}`);
-      this.serverManager.stopServer(payload?.id);
-    });
-
-    this.connectionService.on("AGENT_UNLINK", async () => {
-      console.log("[WARN] Received unlink command from web.");
-      console.log("[System] Stopping active servers for deep cleanup...");
-
-      await this.serverManager.stopAllServers();
-
-      try {
-        EnvManager.saveTokenToEnv("");
-        console.log("Local credentials cleared.");
-      } catch (e) {
-        console.error("Failed to clear local credentials:", e);
-      }
-      console.log("Agent disconnected. Shutting down process in 3s...");
-      setTimeout(() => process.exit(0), 3000);
-    });
-
     this.connectionService.on("AGENT_HIBERNATE", () => {
-      console.log(
+      logger.info(
         "[HIBERNATE] Hibernate command received. Blocking commands...",
       );
       this.isHibernating = true;
@@ -113,104 +89,145 @@ export default class LocalAgentController {
     });
 
     this.connectionService.on("AGENT_WAKE", () => {
-      console.log("[WAKE] Wake command received. Restoring functions...");
+      logger.info("[WAKE] Wake command received. Restoring functions...");
       this.isHibernating = false;
       if (this.saveStatusToEnv) this.saveStatusToEnv("ACTIVE");
       this.connectionService.sendAgentStatus("ACTIVE");
     });
 
-    this.connectionService.on("delete_server", async (payload) => {
-      if (this.isHibernating) return;
-      console.log(`Received delete command for server: ${payload?.id}`);
-      try {
-        const managerDir = path.join(os.homedir(), ".minecraft-manager");
-        const targetDir = path.join(managerDir, "servers", payload.id);
-        await fs.rm(targetDir, { recursive: true, force: true });
-        console.log(`Directory ${targetDir} deleted.`);
-      } catch (err) {
-        console.error("Error deleting server directory:", err);
-      }
-    });
-
-    this.connectionService.on("server_command", async (payload) => {
-      try {
-        const active = this.serverManager.activeServers.get(
-          payload.serverId || payload.id,
-        );
-        if (active) {
-          await active.nativeServerService.sendCommand(
-            payload.command || payload,
+    const eventHandlers = {
+      command_start: async (serverConfig) => {
+        if (this.isHibernating) {
+          logger.info(
+            `[Hibernate] Start command blocked for server: ${serverConfig.id}`,
           );
+          return;
         }
-      } catch (err) {
-        console.error("Error sending command:", err);
-      }
-    });
-
-    this.connectionService.on("fs_operation", async (payload, callback) => {
-      try {
-        const result = await this.fileService.execute(payload);
-        callback({ success: true, data: result });
-      } catch (error) {
-        callback({ success: false, error: error.message });
-      }
-    });
-
-    this.connectionService.on("get_player_stats", async (payload, callback) => {
-      try {
-        let onlineNames = [];
-        const active = this.serverManager.activeServers.get(payload.serverId);
-        if (active && active.nativeServerService.process) {
-          onlineNames = Array.from(
-            active.nativeServerService.onlinePlayers || [],
+        logger.info(`Received start command for server: ${serverConfig.id}`);
+        await this.serverManager.startServer(serverConfig);
+      },
+      command_stop: (payload) => {
+        if (this.isHibernating) {
+          logger.info(
+            `[Hibernate] Stop command blocked for server: ${payload?.id}`,
           );
-          try {
-            await active.nativeServerService.sendCommand("save-all");
-            await new Promise((resolve) => setTimeout(resolve, 1500));
-          } catch (e) {}
+          return;
         }
-
-        const players = await this.playerStatsService.getPlayers(
-          payload.serverId,
-          onlineNames,
+        logger.info(`Received stop command for server: ${payload?.id}`);
+        this.serverManager.stopServer(payload?.id);
+      },
+      AGENT_UNLINK: async () => {
+        logger.warn(
+          "[WARN] Received unlink command from web.\n[System] Stopping active servers for deep cleanup...",
         );
-        callback({ success: true, data: players });
-      } catch (error) {
-        callback({ success: false, error: error.message });
-      }
-    });
+        await this.serverManager.stopAllServers();
+        try {
+          EnvManager.saveTokenToEnv("");
+          logger.info("Local credentials cleared.");
+        } catch (e) {
+          logger.error(`Failed to clear local credentials: ${e}`);
+        }
+        logger.info("Agent disconnected. Shutting down process in 3s...");
+        setTimeout(() => process.exit(0), 3000);
+      },
+      delete_server: async (payload) => {
+        if (this.isHibernating) return;
+        logger.info(`Received delete command for server: ${payload?.id}`);
+        try {
+          const targetDir = path.join(
+            os.homedir(),
+            ".minecraft-manager",
+            "servers",
+            payload.id,
+          );
+          await fs.rm(targetDir, { recursive: true, force: true });
+          logger.info(`Directory ${targetDir} deleted.`);
+        } catch (err) {
+          logger.error(`Error deleting server directory: ${err}`);
+        }
+      },
+      server_command: async (payload) => {
+        try {
+          const active = this.serverManager.activeServers.get(
+            payload.serverId || payload.id,
+          );
+          if (active)
+            await active.nativeServerService.sendCommand(
+              payload.command || payload,
+            );
+        } catch (err) {
+          logger.error(`Error sending command: ${err}`);
+        }
+      },
+      fs_operation: async (payload, callback) => {
+        try {
+          const result = await this.fileService.execute(payload);
+          callback({ success: true, data: result });
+        } catch (error) {
+          callback({ success: false, error: error.message });
+        }
+      },
+      get_player_stats: async (payload, callback) => {
+        try {
+          let onlineNames = [];
+          const active = this.serverManager.activeServers.get(payload.serverId);
+          if (
+            active &&
+            active.nativeServerService.processManager?.isRunning()
+          ) {
+            onlineNames = Array.from(
+              active.nativeServerService.onlinePlayers || [],
+            );
+            try {
+              active.nativeServerService.sendCommand("save-all");
+              await new Promise((resolve) => setTimeout(resolve, 1500));
+            } catch (e) {}
+          }
+          const players = await this.playerStatsService.getPlayers(
+            payload.serverId,
+            onlineNames,
+          );
+          callback({ success: true, data: players });
+        } catch (error) {
+          callback({ success: false, error: error.message });
+        }
+      },
+      list_backups: async (payload, callback) => {
+        try {
+          const backups = await this.backupService.listBackups(
+            payload.serverId,
+          );
+          callback({ success: true, data: backups });
+        } catch (error) {
+          callback({ success: false, error: error.message });
+        }
+      },
+      create_backup: async (payload, callback) => {
+        try {
+          const result = await this.backupService.createBackup(
+            payload.serverId,
+            payload.profile,
+          );
+          callback(result);
+        } catch (error) {
+          callback({ success: false, error: error.message });
+        }
+      },
+      delete_backup: async (payload, callback) => {
+        try {
+          const result = await this.backupService.deleteBackup(
+            payload.serverId,
+            payload.fileName,
+          );
+          callback(result);
+        } catch (error) {
+          callback({ success: false, error: error.message });
+        }
+      },
+    };
 
-    this.connectionService.on("list_backups", async (payload, callback) => {
-      try {
-        const backups = await this.backupService.listBackups(payload.serverId);
-        callback({ success: true, data: backups });
-      } catch (error) {
-        callback({ success: false, error: error.message });
-      }
-    });
-
-    this.connectionService.on("create_backup", async (payload, callback) => {
-      try {
-        const result = await this.backupService.createBackup(
-          payload.serverId,
-          payload.profile,
-        );
-        callback(result);
-      } catch (error) {
-        callback({ success: false, error: error.message });
-      }
-    });
-
-    this.connectionService.on("delete_backup", async (payload, callback) => {
-      try {
-        const result = await this.backupService.deleteBackup(
-          payload.serverId,
-          payload.fileName,
-        );
-        callback(result);
-      } catch (error) {
-        callback({ success: false, error: error.message });
-      }
-    });
+    for (const [event, handler] of Object.entries(eventHandlers)) {
+      this.connectionService.on(event, handler);
+    }
   }
 }

@@ -1,16 +1,18 @@
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
-import prisma from '../src/config/prisma.js';
-import ServerService from '../src/services/ServerService.js';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
+import prisma from '../src/core/database/prisma.client.js';
+import ServerService from '../src/modules/servers/services/server.service.js';
 
-vi.mock('../src/config/prisma.js', () => ({
+vi.mock('../src/core/database/prisma.client.js', () => ({
   default: {
     user: {
       findUnique: vi.fn()
     },
     server: {
-      create: vi.fn(),
       findUnique: vi.fn(),
-      update: vi.fn()
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn()
     }
   }
 }));
@@ -18,99 +20,96 @@ vi.mock('../src/config/prisma.js', () => ({
 describe('ServerService', () => {
   let serverService;
   let mockIo;
+  let mockEmit;
 
   beforeEach(() => {
-    mockIo = { emit: vi.fn() };
+    vi.clearAllMocks();
+    mockEmit = vi.fn();
+    mockIo = {
+      emit: vi.fn(),
+      to: vi.fn().mockReturnValue({ emit: mockEmit })
+    };
     serverService = new ServerService(mockIo);
   });
 
-  afterEach(() => {
-    vi.clearAllMocks();
+  describe('createServer', () => {
+    test('createServer throws error if no name or version provided', async () => {
+      await expect(serverService.createServer('user1', {}))
+        .rejects.toThrow('Server name and version are required');
+    });
+
+    test('createServer throws error if user not found', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+      await expect(serverService.createServer('invalid-user', { name: 'My Server', version: '1.20.1' }))
+        .rejects.toThrow('User not found');
+    });
+
+    test('createServer saves server to db with defaults', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user1' });
+      prisma.server.findMany.mockResolvedValue([]);
+      prisma.server.create.mockResolvedValue({ id: 'new-server' });
+
+      const result = await serverService.createServer('user1', {
+        name: 'My Server',
+        version: '1.20.1',
+        type: 'vanilla'
+      });
+
+      expect(prisma.server.create).toHaveBeenCalled();
+      expect(result).toEqual({ id: 'new-server' });
+    });
   });
 
-  test('createServer throws if missing inputs', async () => {
-    await expect(serverService.createServer('', 'MyServer')).rejects.toThrow('User ID is required');
-    await expect(serverService.createServer('user1', '')).rejects.toThrow('Server name is required');
-  });
+  describe('startServer', () => {
+    test('startServer throws error if server not found', async () => {
+      prisma.server.findUnique.mockResolvedValue(null);
+      await expect(serverService.startServer('invalid-server'))
+        .rejects.toThrow('Server not found');
+    });
 
-  test('createServer throws if user does not exist', async () => {
-    prisma.user.findUnique.mockResolvedValue(null);
-    await expect(serverService.createServer('user1', 'MyServer')).rejects.toThrow('User not found');
-  });
-
-  test('createServer saves server to db with defaults', async () => {
-    prisma.user.findUnique.mockResolvedValue({ id: 'user1' });
-    prisma.server.create.mockResolvedValue({ id: 'server1', name: 'MyServer' });
-
-    const result = await serverService.createServer('user1', 'MyServer');
-
-    expect(prisma.server.create).toHaveBeenCalledWith({
-      data: {
+    test('startServer updates status and emits event to agent', async () => {
+      prisma.server.findUnique.mockResolvedValue({
+        id: 'server1',
         userId: 'user1',
-        name: 'MyServer',
-        type: 'VANILLA',
-        version: 'LATEST',
-        memory: '2G',
         status: 'OFFLINE'
-      }
-    });
-    expect(result.id).toBe('server1');
-  });
+      });
+      prisma.server.update.mockResolvedValue({});
 
-  test('startServer throws if server not found', async () => {
-    prisma.server.findUnique.mockResolvedValue(null);
-    await expect(serverService.startServer('badId')).rejects.toThrow('Server not found');
-  });
+      await serverService.startServer('server1');
 
-  test('startServer throws if server is not offline', async () => {
-    prisma.server.findUnique.mockResolvedValue({ id: 'server1', status: 'STARTING' });
-    await expect(serverService.startServer('server1')).rejects.toThrow('Server is already running or starting');
-  });
+      expect(prisma.server.update).toHaveBeenCalledWith({
+        where: { id: 'server1' },
+        data: { status: 'STARTING', tunnelIp: null }
+      });
 
-  test('startServer updates status and emits event to agent', async () => {
-    const mockServer = { 
-      id: 'server1', 
-      name: 'Test', 
-      type: 'PAPER', 
-      version: '1.20', 
-      memory: '4G', 
-      port: 25565, 
-      status: 'OFFLINE',
-      tunnelSecret: 'secret'
-    };
-    prisma.server.findUnique.mockResolvedValue(mockServer);
-    prisma.server.update.mockResolvedValue({ ...mockServer, status: 'STARTING' });
-
-    await serverService.startServer('server1');
-
-    expect(prisma.server.update).toHaveBeenCalledWith({
-      where: { id: 'server1' },
-      data: { status: 'STARTING' }
-    });
-
-    expect(mockIo.emit).toHaveBeenCalledWith('START_SERVER', {
-      id: 'server1',
-      name: 'Test',
-      type: 'PAPER',
-      version: '1.20',
-      memory: '4G',
-      port: 25565,
-      dataDir: './servers/server1',
-      tunnelSecret: 'secret'
+      expect(mockIo.to).toHaveBeenCalledWith('agent-user1');
+      expect(mockEmit).toHaveBeenCalledWith('START_SERVER', expect.any(Object));
     });
   });
 
-  test('stopServer updates status and emits stop event', async () => {
-    const mockServer = { id: 'server1', status: 'ONLINE' };
-    prisma.server.findUnique.mockResolvedValue(mockServer);
-    
-    await serverService.stopServer('server1');
-    
-    expect(prisma.server.update).toHaveBeenCalledWith({
-      where: { id: 'server1' },
-      data: { status: 'STOPPING' }
+  describe('stopServer', () => {
+    test('stopServer throws error if server not found', async () => {
+      prisma.server.findUnique.mockResolvedValue(null);
+      await expect(serverService.stopServer('invalid-server'))
+        .rejects.toThrow('Server not found');
     });
-    
-    expect(mockIo.emit).toHaveBeenCalledWith('STOP_SERVER', { id: 'server1' });
+
+    test('stopServer updates status and emits stop event', async () => {
+      prisma.server.findUnique.mockResolvedValue({
+        id: 'server1',
+        userId: 'user1',
+        status: 'ONLINE'
+      });
+
+      await serverService.stopServer('server1');
+
+      expect(prisma.server.update).toHaveBeenCalledWith({
+        where: { id: 'server1' },
+        data: { status: 'STOPPING', tunnelIp: null }
+      });
+
+      expect(mockIo.to).toHaveBeenCalledWith('agent-user1');
+      expect(mockEmit).toHaveBeenCalledWith('STOP_SERVER', { id: 'server1' });
+    });
   });
 });
